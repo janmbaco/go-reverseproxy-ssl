@@ -22,21 +22,22 @@ import (
 
 type(
 	remoteHost struct{
-		Scheme string `json:"scheme"`
-		HostName string `json:"host_name"`
-		Port uint `json:"port"`
-		CaPem string `json:"ca_pem"`
-		ClientCrt string `json:"client_crt"`
-		ClientKey string `json:"client_key"`
-		NeedPKFromClient bool `json:"need_pk_from_client"`
+		Scheme           string `json:"scheme"`
+		HostName         string `json:"host_name"`
+		Port             uint   `json:"port"`
+		CaPem            string `json:"ca_pem"`
+		ClientCrt        string `json:"client_crt"`
+		ClientKey        string `json:"client_key"`
+		NeedPkFromClient bool   `json:"need_pk_from_client"`
 	}
 
 	config struct{
-		VirtualHost map[string]remoteHost `json:"virtual_hosts"`
-		DefaultHost string `json:"default_host"`
-		ReverseProxyPort string `json:"reverse_proxy_port"`
-		LogConsoleLevel cross.LogLevel `json:"log_console_level"`
-		LogFileLevel    cross.LogLevel `json:"log_file_level"`
+		VirtualHost      map[string]remoteHost `json:"virtual_hosts"`
+		DefaultHost      string                `json:"default_host"`
+		ReverseProxyPort string                `json:"reverse_proxy_port"`
+		LogConsoleLevel  cross.LogLevel        `json:"log_console_level"`
+		LogFileLevel     cross.LogLevel        `json:"log_file_level"`
+		LogsDir          string                `json:"logs_dir"`
 	}
 )
 
@@ -58,6 +59,8 @@ func main() {
 		LogConsoleLevel:  cross.Trace,
 		LogFileLevel:     cross.Warning,
 	}
+	//añadimos directorio del config
+	disk.ConfigFile.SetDir("../configs")
 	// añadimos el constructroContenido
 	disk.ConfigFile.ConstructorContent = func() interface{}{
 			return &config{}
@@ -119,7 +122,7 @@ func main() {
 			Director:        func(outReq *http.Request) {
 				outReq.URL.Scheme = remoteHost.Scheme
 				outReq.URL.Host = remoteHost.HostName + ":" + strconv.Itoa(int(remoteHost.Port))
-				if remoteHost.NeedPKFromClient && req.TLS.PeerCertificates != nil {
+				if remoteHost.NeedPkFromClient && req.TLS.PeerCertificates != nil {
 					pubKey := base64.URLEncoding.EncodeToString(req.TLS.PeerCertificates[0].RawSubjectPublicKeyInfo)
 					outReq.Header.Set("X-Forwarded-ClientKey", pubKey)
 				}
@@ -139,7 +142,7 @@ func main() {
 			}
 		}
 		//add client certificates
-		if remoteHost.NeedPKFromClient && req.TLS.PeerCertificates != nil && len(remoteHost.ClientKey) > 0 && len(remoteHost.ClientCrt) > 0 {
+		if remoteHost.NeedPkFromClient && req.TLS.PeerCertificates != nil && len(remoteHost.ClientKey) > 0 && len(remoteHost.ClientCrt) > 0 {
 			clientCert, err := tls.LoadX509KeyPair(remoteHost.ClientCrt, remoteHost.ClientKey)
 			cross.TryPanic(err)
 			transport.TLSClientConfig.Certificates=  []tls.Certificate{clientCert}
@@ -151,8 +154,10 @@ func main() {
 
 	servers.NewListener(
 		func(httpServer *http.Server)  {
+			cross.Log.SetDir(conf.LogsDir)
 			cross.Log.SetConsoleLevel(conf.LogConsoleLevel)
 			cross.Log.SetFileLogLevel(conf.LogFileLevel)
+
 
 			mux := http.NewServeMux()
 

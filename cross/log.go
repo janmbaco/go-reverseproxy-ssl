@@ -23,7 +23,8 @@ type mylog struct {
 	loggers             map[LogLevel]*log.Logger
 	activeConsoleLogger map[LogLevel]bool
 	activeFileLogger    map[LogLevel]bool
-	ErrorLogger *log.Logger
+	ErrorLogger         *log.Logger
+	logsDir             string
 }
 
 var Log mylog
@@ -61,6 +62,10 @@ func init() {
 	Log.ErrorLogger = Log.loggers[Error]
 }
 
+func(l *mylog) SetDir(dir string){
+	l.logsDir, _ = filepath.Abs(dir)
+}
+
 func (l *mylog) Println(level LogLevel, message string) {
 	var writers []io.Writer
 	if l.activeConsoleLogger[level] {
@@ -74,8 +79,8 @@ func (l *mylog) Println(level LogLevel, message string) {
 		year, month, day := time.Now().Date()
 		execFile := filepath.Base(os.Args[0])
 	
-		logFile := "./logs/" + execFile + "-" + strconv.Itoa(year) + strconv.Itoa(int(month)) + strconv.Itoa(day) + ".log"
-		os.MkdirAll(filepath.Dir(logFile), 0666)
+		logFile := l.logsDir + execFile + "-" + strconv.Itoa(year) + strconv.Itoa(int(month)) + strconv.Itoa(day) + ".log"
+		_ = os.MkdirAll(filepath.Dir(logFile), 0666)
 		osFile, err := os.OpenFile(logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			log.Println("No se puede crear fichero de registro en: %v", err)
