@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -26,7 +27,8 @@ func init(){
 }
 
 func (this *configFile) SetDir(dir string){
-	abs, _ := filepath.Abs(dir)
+	abs, _ :=  filepath.Abs(dir)
+	abs = strings.ReplaceAll(abs, "\\", "/")
 	this.filePath = abs + "/" + filepath.Base(os.Args[0]) + ".config"
 }
 
@@ -38,7 +40,7 @@ func (this *configFile) Load(config interface {}) {
 	}
 
 	this.onModifiedConfigFile= func(args *events.EventArgs) {
-		modifiedFile := args.Args.(string)
+		modifiedFile := strings.ReplaceAll(args.Args.(string), "\\", "/")
 		if modifiedFile == this.filePath {
 			time.Sleep(100)
 			this.Load(config)

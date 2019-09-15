@@ -75,23 +75,23 @@ func (l *mylog) Println(level LogLevel, message string) {
 			writers = append(writers, os.Stderr)
 		}
 	}
-	if l.activeFileLogger[level] {
+	if len(l.logsDir) > 0 && l.activeFileLogger[level]  {
 		year, month, day := time.Now().Date()
 		execFile := filepath.Base(os.Args[0])
 	
-		logFile := l.logsDir + execFile + "-" + strconv.Itoa(year) + strconv.Itoa(int(month)) + strconv.Itoa(day) + ".log"
+		logFile := l.logsDir + "/" + execFile + "-" + strconv.Itoa(year) + strconv.Itoa(int(month)) + strconv.Itoa(day) + ".log"
 		_ = os.MkdirAll(filepath.Dir(logFile), 0666)
 		osFile, err := os.OpenFile(logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
-			log.Println("No se puede crear fichero de registro en: %v", err)
+			log.Println("impossible to log in file:", err)
 		}
 		defer osFile.Close()
 		writers = append(writers, osFile)
 	}
 
 	if writers != nil {
-		multiwriter := io.MultiWriter(writers...)
-		l.loggers[level].SetOutput(multiwriter)
+		multiWriter := io.MultiWriter(writers...)
+		l.loggers[level].SetOutput(multiWriter)
 
 		if level == Fatal {
 			l.loggers[level].Fatalln(message)

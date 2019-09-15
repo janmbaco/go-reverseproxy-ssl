@@ -11,13 +11,11 @@ import (
 	"github.com/janmbaco/go-reverseproxy-ssl/servers"
 	"golang.org/x/crypto/acme/autocert"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type(
@@ -89,19 +87,6 @@ func main() {
 		cross.TryPanic(server.ListenAndServe())
 	}()
 
-	defaultTransport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   10 * time.Second,
-			KeepAlive: 20 * time.Second,
-			DualStack: true,
-		}).DialContext,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       2 * time.Second,
-		TLSHandshakeTimeout:   100 * time.Millisecond,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
-
 	getCertPool := func(caPems ...string) *x509.CertPool{
 		rootCAs, _ := x509.SystemCertPool()
 		if rootCAs == nil {
@@ -135,7 +120,7 @@ func main() {
 			ErrorHandler:   nil,
 		}
 		//Add transport tls layer
-		transport := defaultTransport
+		transport := http.DefaultTransport.(*http.Transport)
 		if len(remoteHost.CaPem) > 0 {
 			transport.TLSClientConfig = &tls.Config{
 				RootCAs: getCertPool(remoteHost.CaPem),
@@ -232,8 +217,6 @@ func main() {
 				ret.ClientCAs = getCertPool(caPems...)
 				return ret
 			}
-			httpServer.ReadTimeout = 1 * time.Second
-			httpServer.WriteTimeout = 20 * time.Second
 			httpServer.Addr = conf.ReverseProxyPort
 			httpServer.Handler = mux
 			httpServer.TLSConfig = getTlsConfig()
