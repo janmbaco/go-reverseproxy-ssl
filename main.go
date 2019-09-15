@@ -235,4 +235,3 @@ func main() {
 			httpServer.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
 		}).Start()
 }
-
