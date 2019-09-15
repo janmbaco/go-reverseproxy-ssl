@@ -22,11 +22,12 @@ type configFile struct{
 var ConfigFile *configFile
 
 func init(){
-	configFilePath, _ := filepath.Abs(os.Args[0])
-	configFilePath+= ".config"
-	ConfigFile = &configFile{
-		filePath:             configFilePath,
-	}
+	ConfigFile = &configFile{}
+}
+
+func (this *configFile) SetDir(dir string){
+	abs, _ := filepath.Abs(dir)
+	this.filePath = abs + "/" + filepath.Base(os.Args[0]) + ".config"
 }
 
 
