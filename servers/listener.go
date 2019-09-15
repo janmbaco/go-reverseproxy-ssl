@@ -45,7 +45,7 @@ func (this *Listener) Start() {
 		events.Subscribe("ConfigFileChanged", &this.onConfigChanged)
 		cross.Log.Info("Listen on "+this.httpServer.Addr)
 		err := this.httpServer.ListenAndServeTLS("", "")
-		cross.Log.Error(err.Error())
+		cross.Log.Warning(err.Error())
 	}
 }
 
