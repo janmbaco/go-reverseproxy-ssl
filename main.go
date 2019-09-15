@@ -30,7 +30,7 @@ type(
 	}
 
 	config struct{
-		VirtualHost      map[string]remoteHost `json:"virtual_hosts"`
+		VirtualHost      map[string]*remoteHost `json:"virtual_hosts"`
 		DefaultHost      string                `json:"default_host"`
 		ReverseProxyPort string                `json:"reverse_proxy_port"`
 		LogConsoleLevel  cross.LogLevel        `json:"log_console_level"`
@@ -39,6 +39,68 @@ type(
 	}
 )
 
+func (remoteHost *remoteHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if remoteHost.NeedPkFromClient && req.TLS.PeerCertificates == nil{
+		http.Error(rw, "Not authorized", 401)
+		return
+	}
+	_, err := url.Parse(remoteHost.Scheme + "://" + remoteHost.HostName + ":" + strconv.Itoa(int(remoteHost.Port)))
+	cross.TryPanic(err)
+	proxy := httputil.ReverseProxy{
+		Director:        func(outReq *http.Request) {
+
+			outReq.URL.Scheme = remoteHost.Scheme
+			outReq.URL.Host = remoteHost.HostName + ":" + strconv.Itoa(int(remoteHost.Port))
+			outReq.URL.Path = req.URL.Path
+			outReq.URL.RawQuery = req.URL.RawQuery
+
+			outReq.Header.Set("X-Forwarded-Proto", "https")
+
+			cross.Log.Info(fmt.Sprintf( "from '%v%v%v' to '%v%v%v'", req.URL.Host , req.URL.Path, req.URL.RawQuery, outReq.URL.Host, outReq.URL.Path, outReq.URL.RawPath))
+			if remoteHost.NeedPkFromClient {
+				pubKey := base64.URLEncoding.EncodeToString(req.TLS.PeerCertificates[0].RawSubjectPublicKeyInfo)
+				outReq.Header.Set("X-Forwarded-ClientKey", pubKey)
+				cross.Log.Info("Public Key usuario: " + pubKey)
+			}
+		},
+		Transport:      nil,
+		FlushInterval:  0,
+		ErrorLog:       cross.Log.ErrorLogger,
+		BufferPool:     nil,
+		ModifyResponse: nil,
+		ErrorHandler:   nil,
+	}
+	//Add transport tls layer
+	transport := http.DefaultTransport.(*http.Transport)
+	if len(remoteHost.CaPem) > 0 {
+		transport.TLSClientConfig = &tls.Config{
+			RootCAs: getCertPool(remoteHost.CaPem),
+		}
+	}
+	//add client certificates
+	if  len(remoteHost.ClientKey) > 0 && len(remoteHost.ClientCrt) > 0 {
+		clientCert, err := tls.LoadX509KeyPair(remoteHost.ClientCrt, remoteHost.ClientKey)
+		cross.TryPanic(err)
+		transport.TLSClientConfig.Certificates=  []tls.Certificate{clientCert}
+	}
+
+	proxy.Transport = transport
+	proxy.ServeHTTP(rw, req)
+}
+
+func  getCertPool (caPems ...string) *x509.CertPool{
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+	for _, caPem := range caPems{
+		pem, err := ioutil.ReadFile(caPem)
+		cross.TryPanic(err)
+		rootCAs.AppendCertsFromPEM(pem)
+	}
+	return rootCAs
+}
+
 func main() {
 	cross.Log.Info("")
 	cross.Log.Info("Start Server Application")
@@ -46,13 +108,14 @@ func main() {
 
 	//default config
 	conf := &config{
-		VirtualHost:  map[string]remoteHost{
+		VirtualHost:  map[string]*remoteHost{
 			"example.host.com" : {
 				Scheme: "http",
 				HostName: "localhost",
 				Port: 2256,
 			},
 		},
+		DefaultHost : "localhost",
 		ReverseProxyPort: ":443",
 		LogConsoleLevel:  cross.Trace,
 		LogFileLevel:     cross.Warning,
@@ -87,56 +150,6 @@ func main() {
 		cross.TryPanic(server.ListenAndServe())
 	}()
 
-	getCertPool := func(caPems ...string) *x509.CertPool{
-		rootCAs, _ := x509.SystemCertPool()
-		if rootCAs == nil {
-			rootCAs = x509.NewCertPool()
-		}
-		for _, caPem := range caPems{
-			pem, err := ioutil.ReadFile(caPem)
-			cross.TryPanic(err)
-			rootCAs.AppendCertsFromPEM(pem)
-		}
-		return rootCAs
-	}
-
-	getProxy := func (remoteHost remoteHost, rw http.ResponseWriter, req *http.Request)   {
-		_, err := url.Parse(remoteHost.Scheme + "://" + remoteHost.HostName + ":" + strconv.Itoa(int(remoteHost.Port)))
-		cross.TryPanic(err)
-		proxy := httputil.ReverseProxy{
-			Director:        func(outReq *http.Request) {
-				outReq.URL.Scheme = remoteHost.Scheme
-				outReq.URL.Host = remoteHost.HostName + ":" + strconv.Itoa(int(remoteHost.Port))
-				if remoteHost.NeedPkFromClient && req.TLS.PeerCertificates != nil {
-					pubKey := base64.URLEncoding.EncodeToString(req.TLS.PeerCertificates[0].RawSubjectPublicKeyInfo)
-					outReq.Header.Set("X-Forwarded-ClientKey", pubKey)
-				}
-			},
-			Transport:      nil,
-			FlushInterval:  0,
-			ErrorLog:       cross.Log.ErrorLogger,
-			BufferPool:     nil,
-			ModifyResponse: nil,
-			ErrorHandler:   nil,
-		}
-		//Add transport tls layer
-		transport := http.DefaultTransport.(*http.Transport)
-		if len(remoteHost.CaPem) > 0 {
-			transport.TLSClientConfig = &tls.Config{
-				RootCAs: getCertPool(remoteHost.CaPem),
-			}
-		}
-		//add client certificates
-		if remoteHost.NeedPkFromClient && req.TLS.PeerCertificates != nil && len(remoteHost.ClientKey) > 0 && len(remoteHost.ClientCrt) > 0 {
-			clientCert, err := tls.LoadX509KeyPair(remoteHost.ClientCrt, remoteHost.ClientKey)
-			cross.TryPanic(err)
-			transport.TLSClientConfig.Certificates=  []tls.Certificate{clientCert}
-		}
-
-		proxy.Transport = transport
-		proxy.ServeHTTP(rw, req)
-	}
-
 	servers.NewListener(
 		func(httpServer *http.Server)  {
 			cross.Log.SetDir(conf.LogsDir)
@@ -155,22 +168,31 @@ func main() {
 			}
 			var virtualHost []string
 			var caPems []string
+			var isRegisteredDefaultHost bool
 			for name, vHost := range conf.VirtualHost{
 				virtualHost = append(virtualHost, name)
 				if len(vHost.CaPem) > 0 {
 					caPems = append(caPems, vHost.CaPem)
 				}
+				if name == conf.DefaultHost{
+					isRegisteredDefaultHost = true
+				}
 				cross.Log.Info(fmt.Sprintf("register proxy from: '%v' to '%v://%v:%v'", name,vHost.Scheme, vHost.HostName, vHost.Port))
-				mux.HandleFunc(name+"/", func(w http.ResponseWriter, r *http.Request) {
-					getProxy(vHost, w, r)
+				mux.Handle(name+"/", vHost)
+			}
+			if !isRegisteredDefaultHost {
+				cross.Log.Info(fmt.Sprintf("register default host: '%v'", conf.DefaultHost))
+				mux.HandleFunc(conf.DefaultHost + "/", func(w http.ResponseWriter, r *http.Request) {
+					_, _ = w.Write([]byte("en curso..."))
 				})
+				virtualHost = append(virtualHost, conf.DefaultHost)
 			}
 
 			getTlsConfig := func () *tls.Config{
 				ret := &tls.Config{}
 				if conf.DefaultHost == "localhost" {
 					//in localhost doesn't works autocert
-					cert, err := tls.LoadX509KeyPair("./certs/server.crt", "./certs/server.key")
+					cert, err := tls.LoadX509KeyPair("../certs/server.crt", "../certs/server.key")
 					cross.TryPanic(err)
 
 					ret = &tls.Config{
@@ -207,7 +229,7 @@ func main() {
 				} else {
 					autocert := &autocert.Manager{
 						Prompt:          autocert.AcceptTOS,
-						Cache:           autocert.DirCache("certs"),
+						Cache:           autocert.DirCache("../certs"),
 						HostPolicy:      autocert.HostWhitelist(virtualHost...),
 					}
 
@@ -220,6 +242,8 @@ func main() {
 			httpServer.Addr = conf.ReverseProxyPort
 			httpServer.Handler = mux
 			httpServer.TLSConfig = getTlsConfig()
-			httpServer.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
+			if conf.DefaultHost == "localhost" {
+				httpServer.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
+			}
 		}).Start()
 }
