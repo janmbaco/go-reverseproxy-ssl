@@ -30,6 +30,7 @@ func init(){
 		ReverseProxyPort: ":443",
 		LogConsoleLevel:  cross.Trace,
 		LogFileLevel:     cross.Warning,
+		LogsDir: "../logs",
 	}
 	//set config dir
 	disk.ConfigFile.SetDir("../configs")
