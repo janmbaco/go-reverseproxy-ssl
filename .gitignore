@@ -11,3 +11,5 @@
 *.out
 /.idea
 /*.tgitconfig
+go.mod
+go.sum
