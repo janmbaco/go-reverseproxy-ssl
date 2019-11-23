@@ -45,7 +45,7 @@ func setConfiguration(){
 		LogsDir: "../logs",
 	}
 
-	var configfile = flag.String("ConfigFile", "./" + filepath.Base(os.Args[0]) + ".config", "Config File")
+	var configfile = flag.String("ConfigFile", os.Args[0] + ".config", "Config File")
 
 	var configConstructor  = func() interface{}{
 		return &configs.Config{}
