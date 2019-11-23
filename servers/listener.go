@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"github.com/janmbaco/go-reverseproxy-ssl/disk"
 	"net"
 	"net/http"
 
@@ -28,7 +29,7 @@ type (
 		ServerType   ServerType	
 	}
 
- 	Listener struct {
+ 	listener struct {
 		configureFunc   ConfigureListenerFunc
 		setProtobufFunc SetProtobufFunc
 		reStart         bool
@@ -44,26 +45,26 @@ const (
 	gRpcSever
 )
 
-func NewListener(configureFunc ConfigureListenerFunc) *Listener {
-	return &Listener{
+func NewListener(configureFunc ConfigureListenerFunc) *listener {
+	return &listener{
 		configureFunc: configureFunc,
 		serverSetter: &ServerSetter{},
 	}
 }
 
-func (this *Listener) SetProtobuf(setProtbufFunc SetProtobufFunc) *Listener {
+func (this *listener) SetProtobuf(setProtbufFunc SetProtobufFunc) *listener {
 	this.setProtobufFunc = setProtbufFunc
 	this.serverSetter.ServerType = gRpcSever
 	return this
 }
 
-func (this *Listener) Start() {
+func (this *listener) Start() {
 	for (this.httpServer == nil && this.grpcServer == nil) || this.reStart {
 
 		this.reStart = false
 
 		if this.configureFunc == nil {
-			cross.TryPanic(errors.New("Not configured Server"))
+			cross.TryPanic(errors.New("not configured server"))
 		}
 		this.configureFunc(this.serverSetter)
 
@@ -84,7 +85,7 @@ func (this *Listener) Start() {
 			var lis net.Listener
 			lis, err = net.Listen("tcp", this.serverSetter.Addr)
 			cross.TryPanic(err)
-			if(this.setProtobufFunc != nil){
+			if this.setProtobufFunc != nil {
 				this.setProtobufFunc(this.grpcServer)
 			}
 			err = this.grpcServer.Serve(lis)
@@ -93,7 +94,7 @@ func (this *Listener) Start() {
 	}
 }
 
-func (this *Listener) Stop() error {
+func (this *listener) Stop() error {
 	cross.Log.Info("Server Stop")
 	var err error
 	switch this.serverSetter.ServerType {
@@ -105,14 +106,14 @@ func (this *Listener) Stop() error {
 	return err
 }
 
-func (this *Listener) initializeServer() {
+func (this *listener) initializeServer() {
 	if this.serverSetter.Addr == ""{
-		cross.TryPanic(errors.New("Address not configured."))
+		cross.TryPanic(errors.New("address not configured"))
 	}
 	switch this.serverSetter.ServerType {
 	case HttpServer:
 		if this.serverSetter.Handler == nil{
-			cross.TryPanic(errors.New("Handler routes not configured."))
+			cross.TryPanic(errors.New("handler routes not configured"))
 		}
 		this.httpServer = &http.Server{
 			ErrorLog: cross.Log.ErrorLogger,
@@ -130,7 +131,7 @@ func (this *Listener) initializeServer() {
 	}
 }
 
-func(this *Listener) registerEvents(){
+func(this *listener) registerEvents(){
 	if this.onConfigChanged == nil {
 		this.onConfigChanged = func(args *events.EventArgs) {
 			this.reStart = true
@@ -138,5 +139,5 @@ func(this *Listener) registerEvents(){
 		}
 	}
 
-	events.Subscribe("ConfigFileChanged", &this.onConfigChanged)
+	events.Subscribe(disk.ConfigFileChangedEvent, &this.onConfigChanged)
 }

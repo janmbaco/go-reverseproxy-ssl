@@ -1,4 +1,4 @@
-package servers
+package configs
 
 import (
 	"crypto/tls"
@@ -39,11 +39,10 @@ func (this *VirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 			outReq.Header.Set("X-Forwarded-Proto", "https")
 
-			cross.Log.Info(fmt.Sprintf( "from '%v%v%v' to '%v%v%v'", req.URL.Host , req.URL.Path, req.URL.RawQuery, outReq.URL.Host, outReq.URL.Path, outReq.URL.RawPath))
+			cross.Log.Info(fmt.Sprintf( "from '%v%v%v' to '%v%v%v'", req.URL.Host, req.URL.Path, req.URL.RawQuery, outReq.URL.Host, outReq.URL.Path, outReq.URL.RawPath))
 			if this.NeedPkFromClient {
 				pubKey := base64.URLEncoding.EncodeToString(req.TLS.PeerCertificates[0].RawSubjectPublicKeyInfo)
 				outReq.Header.Set("X-Forwarded-ClientKey", pubKey)
-				cross.Log.Info("Public Key usuario: " + pubKey)
 			}
 		},
 		Transport:      nil,

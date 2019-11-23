@@ -11,32 +11,37 @@ import (
 	"time"
 )
 
-type configFile struct{
+const (
+	ConfigFileChangedEvent = "ConfigFileChangedEvent"
+)
+
+type (
+	ConstructorContentFunc func() interface {}
+	CopyContentFunc func(interface{}, interface{})
+)
+
+
+type configFileManager struct{
 	filePath             string
 	onModifiedConfigFile events.SubscribeFunc
 	config               interface{}
 	watcherActive        bool
-	ConstructorContent   func() interface{}
-	CopyContent          func(interface{}, interface{})
+	constructorContent   ConstructorContentFunc
+	copyContent          CopyContentFunc
 }
 
-var ConfigFile *configFile
-
-func init(){
-	ConfigFile = &configFile{}
+func NewConfigFileManager(filepath string, constructor ConstructorContentFunc, copy CopyContentFunc) *configFileManager{
+	return &configFileManager{
+		filePath:             filepath,
+		constructorContent:   constructor,
+		copyContent:          copy,
+	}
 }
 
-func (this *configFile) SetDir(dir string){
-	abs, _ :=  filepath.Abs(dir)
-	abs = strings.ReplaceAll(abs, "\\", "/")
-	this.filePath = abs + "/" + filepath.Base(os.Args[0]) + ".config"
-}
-
-
-func (this *configFile) Load(config interface {}) {
+func (this *configFileManager) Load(config interface {}) {
 	this.config = config
 	if this.onModifiedConfigFile != nil {
-		events.UnSubscribe("ModifiedFile", &this.onModifiedConfigFile)
+		events.UnSubscribe(ModifiedFileEvent, &this.onModifiedConfigFile)
 	}
 
 	this.onModifiedConfigFile= func(args *events.EventArgs) {
@@ -56,34 +61,34 @@ func (this *configFile) Load(config interface {}) {
 		this.watcherActive = true
 	}
 	if successOnReading  {
-		events.Publish("ConfigFileChanged", events.NewEventArgs(config, nil))
+		events.Publish(ConfigFileChangedEvent, events.NewEventArgs(config, nil))
 	}
 
-	events.Subscribe("ModifiedFile", &this.onModifiedConfigFile)
+	events.Subscribe(ModifiedFileEvent, &this.onModifiedConfigFile)
 }
 
-func  (this *configFile) create() {
+func  (this *configFileManager) create() {
 	if this.watcherActive {
-		Watcher.Remove(this.filePath)
+		_ = Watcher.Remove(this.filePath)
 		this.watcherActive = false
 	}
-	json, err := json.Marshal(this.config)
+	configFile, err := json.Marshal(this.config)
 	cross.TryPanic(err)
-	os.MkdirAll(filepath.Dir(this.filePath), 0666)
-	cross.TryPanic(CreateFile(this.filePath, json))
+	_ = os.MkdirAll(filepath.Dir(this.filePath), 0666)
+	cross.TryPanic(CreateFile(this.filePath, configFile))
 	cross.TryPanic(Watcher.Add(this.filePath))
 	this.watcherActive = true
 }
 
-func (this *configFile) read() bool {
-	//is posible that it still modifying
+func (this *configFileManager) read() bool {
+	//it's possible that it still modifying
 	time.Sleep(100)
 	content, err := ioutil.ReadFile(this.filePath)
 	if err == nil {
-		conf := this.ConstructorContent()
+		conf := this.constructorContent()
 		err = json.Unmarshal(content, conf)
 		if err == nil{
-			this.CopyContent(conf, this.config)
+			this.copyContent(conf, this.config)
 		}
 	}
 	if err != nil {
