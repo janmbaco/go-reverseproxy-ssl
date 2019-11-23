@@ -1,4 +1,4 @@
-package servers
+package configs
 
 import (
 	"crypto/rand"
@@ -7,9 +7,9 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 )
 
-func GetTlsConfig(virtualHost []string, caPems []string)  *tls.Config{
+func GetTlsConfig(config *Config, virtualHost []string, caPems []string)  *tls.Config{
 	ret := &tls.Config{}
-	if Config.DefaultHost == "localhost" {
+	if config.DefaultHost == "localhost" {
 		//in localhost doesn't works autocert
 		cert, err := tls.LoadX509KeyPair("../certs/server.crt", "../certs/server.key")
 		cross.TryPanic(err)

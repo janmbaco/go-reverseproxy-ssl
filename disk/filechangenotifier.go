@@ -8,6 +8,11 @@ import (
 
 var Watcher *fsnotify.Watcher
 
+const (
+	ModifiedFileEvent = "ModifiedFileEvent"
+	ChangeModFileEvent = "ChangedModFileEvent"
+)
+
 func init() {
 	var err error
 	Watcher, err = fsnotify.NewWatcher()
@@ -24,10 +29,10 @@ func watchFiles(){
 						events.Publish(ev, events.NewEventArgs(nil, event.Name))
 					}
 					if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Remove == fsnotify.Remove || event.Op&fsnotify.Rename == fsnotify.Rename{
-						publish("ModifiedFile")
+						publish(ModifiedFileEvent)
 					}
 					if event.Op&fsnotify.Chmod == fsnotify.Chmod {
-						publish("ChangedModFile")
+						publish(ChangeModFileEvent)
 					}
 				}
 			}
