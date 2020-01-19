@@ -18,7 +18,10 @@ var Config *configs.Config
 
 func main() {
 
-	setConfiguration()
+	var configfile = flag.String("config", os.Args[0] + ".config", "Config File")
+	flag.Parse()
+
+	setConfiguration(configfile)
 	//redirect http to https
 	go func() {
 		servers.NewListener(redirectHttpToHttps).Start()
@@ -27,7 +30,7 @@ func main() {
 	servers.NewListener(reverseProxy).Start()
 }
 
-func setConfiguration(){
+func setConfiguration(configfile *string){
 	//default config if file is not found
 	Config = &configs.Config{
 		VirtualHost:  map[string]*configs.VirtualHost{
@@ -43,8 +46,6 @@ func setConfiguration(){
 		LogFileLevel:     cross.Warning,
 		LogsDir: "../logs",
 	}
-
-	var configfile = flag.String("ConfigFile", os.Args[0] + ".config", "Config File")
 
 	var configConstructor  = func() interface{}{
 		return &configs.Config{}
