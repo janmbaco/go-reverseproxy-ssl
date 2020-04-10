@@ -16,12 +16,11 @@ const (
 )
 
 type (
-	ConstructorContentFunc func() interface {}
-	CopyContentFunc func(interface{}, interface{})
+	ConstructorContentFunc func() interface{}
+	CopyContentFunc        func(interface{}, interface{})
 )
 
-
-type configFileManager struct{
+type configFileManager struct {
 	filePath             string
 	onModifiedConfigFile events.SubscribeFunc
 	config               interface{}
@@ -30,21 +29,21 @@ type configFileManager struct{
 	copyContent          CopyContentFunc
 }
 
-func NewConfigFileManager(filepath string, constructor ConstructorContentFunc, copy CopyContentFunc) *configFileManager{
+func NewConfigFileManager(filepath string, constructor ConstructorContentFunc, copy CopyContentFunc) *configFileManager {
 	return &configFileManager{
-		filePath:             filepath,
-		constructorContent:   constructor,
-		copyContent:          copy,
+		filePath:           filepath,
+		constructorContent: constructor,
+		copyContent:        copy,
 	}
 }
 
-func (this *configFileManager) Load(config interface {}) {
+func (this *configFileManager) Load(config interface{}) {
 	this.config = config
 	if this.onModifiedConfigFile != nil {
 		events.UnSubscribe(ModifiedFileEvent, &this.onModifiedConfigFile)
 	}
 
-	this.onModifiedConfigFile= func(args *events.EventArgs) {
+	this.onModifiedConfigFile = func(args *events.EventArgs) {
 		modifiedFile := strings.ReplaceAll(args.Args.(string), "\\", "/")
 		if modifiedFile == this.filePath {
 			time.Sleep(100)
@@ -60,14 +59,14 @@ func (this *configFileManager) Load(config interface {}) {
 		cross.TryPanic(Watcher.Add(this.filePath))
 		this.watcherActive = true
 	}
-	if successOnReading  {
+	if successOnReading {
 		events.Publish(ConfigFileChangedEvent, events.NewEventArgs(config, nil))
 	}
 
 	events.Subscribe(ModifiedFileEvent, &this.onModifiedConfigFile)
 }
 
-func  (this *configFileManager) create() {
+func (this *configFileManager) create() {
 	if this.watcherActive {
 		_ = Watcher.Remove(this.filePath)
 		this.watcherActive = false
@@ -87,12 +86,13 @@ func (this *configFileManager) read() bool {
 	if err == nil {
 		conf := this.constructorContent()
 		err = json.Unmarshal(content, conf)
-		if err == nil{
+		if err == nil {
 			this.copyContent(conf, this.config)
 		}
 	}
 	if err != nil {
 		cross.Log.Warning(err.Error())
 	}
+
 	return err == nil
 }
