@@ -1,67 +1,69 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
 
+	"github.com/janmbaco/go-infrastructure/config"
+	"github.com/janmbaco/go-infrastructure/logs"
+	"github.com/janmbaco/go-infrastructure/server"
 	"github.com/janmbaco/go-reverseproxy-ssl/configs"
-	"github.com/janmbaco/go-reverseproxy-ssl/cross"
-	"github.com/janmbaco/go-reverseproxy-ssl/disk"
-	"github.com/janmbaco/go-reverseproxy-ssl/servers"
 )
 
 var Config *configs.Config
 
 func main() {
 
-	var configfile = flag.String("config", os.Args[0] + ".config", "Config File")
+	var configfile = flag.String("config", os.Args[0]+".config", "Config File")
 	flag.Parse()
 
-	setConfiguration(configfile)
+	Config = setDefaultConfig()
+	configHandler := config.NewFileConfigHandler(*configfile)
+	configHandler.Load(Config)
+	setLogConfiguration()
+	configHandler.OnModifiedConfigSubscriber(setLogConfiguration)
+
+	logs.Log.Info("")
+	logs.Log.Info("Start Server Application")
+	logs.Log.Info("")
+
 	//redirect http to https
 	go func() {
-		servers.NewListener(redirectHttpToHttps).Start()
+		server.NewListener(configHandler, redirectHttpToHttps).Start()
 	}()
 	//start server
-	servers.NewListener(reverseProxy).Start()
+	server.NewListener(configHandler, reverseProxy).Start()
 }
 
-func setConfiguration(configfile *string){
+func setLogConfiguration() {
+	logs.Log.SetDir(Config.LogsDir)
+	logs.Log.SetConsoleLevel(Config.LogConsoleLevel)
+	logs.Log.SetFileLogLevel(Config.LogFileLevel)
+}
+
+func setDefaultConfig() *configs.Config {
 	//default config if file is not found
-	Config = &configs.Config{
-		VirtualHost:  map[string]*configs.VirtualHost{
-			"example.host.com" : {
-				Scheme: "http",
+	return &configs.Config{
+		VirtualHost: map[string]*configs.VirtualHost{
+			"example.host.com": {
+				Scheme:   "http",
 				HostName: "localhost",
-				Port: 2256,
+				Port:     2256,
 			},
 		},
-		DefaultHost : "localhost",
+		DefaultHost:      "localhost",
 		ReverseProxyPort: ":443",
-		LogConsoleLevel:  cross.Trace,
-		LogFileLevel:     cross.Warning,
-		LogsDir: "../logs",
+		LogConsoleLevel:  logs.Trace,
+		LogFileLevel:     logs.Warning,
+		LogsDir:          "./logs",
 	}
-
-	var configConstructor  = func() interface{}{
-		return &configs.Config{}
-	}
-
-	var configCopy = func(from interface{}, to interface{}) {
-		fromConf := from.(*configs.Config)
-		toConf := to.(*configs.Config)
-		*toConf = *fromConf
-	}
-
-	disk.NewConfigFileManager(*configfile, configConstructor, configCopy).Load(Config)
 }
 
-func redirectHttpToHttps(serverSetter *servers.ServerSetter) {
-	cross.Log.Info("Start Redirect Server from http to https")
+func redirectHttpToHttps(serverSetter *server.ServerSetter) {
+	logs.Log.Info("Start Redirect Server from http to https")
 	mux := http.NewServeMux()
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
@@ -70,17 +72,8 @@ func redirectHttpToHttps(serverSetter *servers.ServerSetter) {
 	serverSetter.Handler = mux
 }
 
-func reverseProxy(serverSetter *servers.ServerSetter) {
+func reverseProxy(serverSetter *server.ServerSetter) {
 
-	cross.Log.SetDir(Config.LogsDir)
-	cross.Log.SetConsoleLevel(Config.LogConsoleLevel)
-	cross.Log.SetFileLogLevel(Config.LogFileLevel)
-
-	cross.Log.Info("")
-	cross.Log.Info("Start Server Application")
-	cross.Log.Info("")
-
-	//create a Multiplexer server
 	mux := http.NewServeMux()
 
 	var virtualHost []string
@@ -99,32 +92,32 @@ func reverseProxy(serverSetter *servers.ServerSetter) {
 			isRegisteredDefaultHost = true
 		}
 
-		cross.Log.Info(fmt.Sprintf("register proxy from: '%v' to '%v://%v:%v'", name, vHost.Scheme, vHost.HostName, vHost.Port))
+		logs.Log.Info(fmt.Sprintf("register proxy from: '%v' to '%v://%v:%v'", name, vHost.Scheme, vHost.HostName, vHost.Port))
 		mux.Handle(name+"/", vHost)
 		redirectToWWW(name, mux)
 	}
 
 	if !isRegisteredDefaultHost {
-		cross.Log.Info(fmt.Sprintf("register default host: '%v'", Config.DefaultHost))
+		logs.Log.Info(fmt.Sprintf("register default host: '%v'", Config.DefaultHost))
 		mux.HandleFunc(Config.DefaultHost+"/", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("started..."))
 		})
 		virtualHost = append(virtualHost, Config.DefaultHost)
 
-		if Config.DefaultHost != "localhost"{
+		if Config.DefaultHost != "localhost" {
 			redirectToWWW(Config.DefaultHost, mux)
 		}
 	}
 
 	serverSetter.Addr = Config.ReverseProxyPort
 	serverSetter.Handler = mux
-	serverSetter.TLSConfig = configs.GetTlsConfig(Config, virtualHost, caPems)
-	if Config.DefaultHost == "localhost" {
-		serverSetter.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
+
+	if Config.DefaultHost != "localhost" {
+		serverSetter.TLSConfig = configs.GetTlsConfig(virtualHost, caPems)
 	}
 }
 
-func redirectToWWW(hostname string, mux *http.ServeMux){
+func redirectToWWW(hostname string, mux *http.ServeMux) {
 	if strings.Contains(hostname, "www") {
 		//redirect to web host with www.
 		mux.Handle(strings.Replace(hostname, "www.", "", 1)+"/",
