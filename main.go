@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/janmbaco/go-infrastructure/errorhandler"
+	"html/template"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -11,6 +14,7 @@ import (
 	"github.com/janmbaco/go-infrastructure/logs"
 	"github.com/janmbaco/go-infrastructure/server"
 	"github.com/janmbaco/go-reverseproxy-ssl/configs"
+	"github.com/russross/blackfriday/v2"
 )
 
 var Config *configs.Config
@@ -100,7 +104,21 @@ func reverseProxy(serverSetter *server.ServerSetter) {
 	if !isRegisteredDefaultHost {
 		logs.Log.Info(fmt.Sprintf("register default host: '%v'", Config.DefaultHost))
 		mux.HandleFunc(Config.DefaultHost+"/", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte("started..."))
+			if tmpl, err := template.ParseFiles("./html/index.html"); err != nil {
+				errorhandler.TryPanic(err)
+			} else {
+				if markDown, err := ioutil.ReadFile("README.md"); err != nil {
+					errorhandler.TryPanic(err)
+				} else {
+					type pipe struct {
+						Home        template.HTML
+						VirtualHost map[string]*configs.VirtualHost
+					}
+					home := strings.SplitN(string(markDown), "\n", 2)[1]
+					errorhandler.TryPanic(tmpl.ExecuteTemplate(w, "index.html", &pipe{template.HTML(blackfriday.Run([]byte(home))), Config.VirtualHost}))
+				}
+
+			}
 		})
 		virtualHost = append(virtualHost, Config.DefaultHost)
 
