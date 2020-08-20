@@ -52,10 +52,16 @@ func setDefaultConfig() *configs.Config {
 	//default config if file is not found
 	return &configs.Config{
 		VirtualHost: map[string]*configs.VirtualHost{
-			"example.host.com": {
+			"www.example.com/": {
 				Scheme:   "http",
 				HostName: "localhost",
 				Port:     2256,
+			},
+			"127.0.0.1:22": {
+				Scheme:   "ssh",
+				HostName: "localhost",
+				Port:     22,
+				CaPem:    "known_hosts",
 			},
 		},
 		DefaultHost:      "localhost",
@@ -97,7 +103,7 @@ func reverseProxy(serverSetter *server.ServerSetter) {
 		}
 
 		logs.Log.Info(fmt.Sprintf("register proxy from: '%v' to '%v://%v:%v'", name, vHost.Scheme, vHost.HostName, vHost.Port))
-		mux.Handle(name+"/", vHost)
+		mux.Handle(name, vHost)
 		redirectToWWW(name, mux)
 	}
 

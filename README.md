@@ -11,5 +11,3 @@ The proxy can communicate with the service in any way. That is, if necessary, di
 Here you have a diagram of how the communication with the services is through Go ReverseProsy SSL.
 
 ![](https://i.ibb.co/tzLrDGZ/Go-Reverse-Proxy-Esquema.png)
-
-
