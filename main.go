@@ -3,8 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
+	"github.com/janmbaco/go-reverseproxy-ssl/grpcUtil"
+	"github.com/janmbaco/go-reverseproxy-ssl/hosts"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/janmbaco/go-infrastructure/config"
@@ -14,6 +18,8 @@ import (
 )
 
 var Config *configs.Config
+
+type fnSetOptionsVHost func(hosts.IVirtualHost)
 
 func main() {
 
@@ -47,23 +53,32 @@ func setLogConfiguration() {
 func setDefaultConfig() *configs.Config {
 	//default config if file is not found
 	return &configs.Config{
-		VirtualHost: map[string]*configs.VirtualHost{
-			"www.example.com/": {
-				Scheme:   "http",
-				HostName: "localhost",
-				Port:     2256,
+		GrpcJsonVirtualHosts: map[string]*hosts.GrpcJsonVirtualHost{
+			"www.pareceproxy.com": {
+				VirtualHost: &hosts.VirtualHost{
+					Scheme:   "http",
+					HostName: "localhost",
+					Port:     8080,
+				},
 			},
-			"127.0.0.1:22": {
-				Scheme:   "ssh",
-				HostName: "localhost",
-				Port:     22,
-				CaPem:    "known_hosts",
+		},
+		GrpcWebVirtualHosts: map[string]*hosts.GrpcWebVirtualHost{
+			"www.example.com": {
+				VirtualHost: &hosts.VirtualHost{
+					Scheme:   "http",
+					HostName: "loclahost",
+					Port:     8080,
+				},
+				GrpcWebProxy: &grpcUtil.GrpcWebProxy{
+					AllowAllOrigins: true,
+					UseWebSockets:   true,
+				},
 			},
 		},
 		DefaultHost:      "localhost",
 		ReverseProxyPort: ":443",
 		LogConsoleLevel:  logs.Trace,
-		LogFileLevel:     logs.Warning,
+		LogFileLevel:     logs.Trace,
 		LogsDir:          "./logs",
 	}
 }
@@ -84,43 +99,32 @@ func reverseProxy(serverSetter *server.ServerSetter) {
 
 	var virtualHost []string
 	var caPems []string
-	var isRegisteredDefaultHost bool
 
-	for name, vHost := range Config.VirtualHost {
-
-		virtualHost = append(virtualHost, name)
-
-		if len(vHost.CaPem) > 0 {
-			caPems = append(caPems, vHost.CaPem)
+	registerVirtualHost(mux, Config.WebVirtualHosts, func(vHost hosts.IVirtualHost) {
+		virtualHost = append(virtualHost, vHost.GetHostToReplace())
+		if caPem := vHost.GetCaPem(); len(caPem) > 0 {
+			caPems = append(caPems, caPem)
 		}
+	})
 
-		if name == Config.DefaultHost {
-			isRegisteredDefaultHost = true
-		}
+	registerVirtualHost(mux, Config.SshVirtualHosts, nil)
+	registerVirtualHost(mux, Config.GrpcJsonVirtualHosts, nil)
+	registerVirtualHost(mux, Config.GrpcWebVirtualHosts, nil)
 
-		logs.Log.Info(fmt.Sprintf("register proxy from: '%v' to '%v://%v:%v'", name, vHost.Scheme, vHost.HostName, vHost.Port))
-		mux.Handle(name, vHost)
-		redirectToWWW(name, mux)
-	}
+	logs.Log.Info(fmt.Sprintf("register default host: '%v'", Config.DefaultHost))
+	mux.HandleFunc(Config.DefaultHost+"/", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("started..."))
+	})
+	virtualHost = append(virtualHost, Config.DefaultHost)
 
-	if !isRegisteredDefaultHost {
-		logs.Log.Info(fmt.Sprintf("register default host: '%v'", Config.DefaultHost))
-		mux.HandleFunc(Config.DefaultHost+"/", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte("started..."))
-		})
-		virtualHost = append(virtualHost, Config.DefaultHost)
-
-		if Config.DefaultHost != "localhost" {
-			redirectToWWW(Config.DefaultHost, mux)
-		}
+	if Config.DefaultHost != "localhost" {
+		redirectToWWW(Config.DefaultHost, mux)
 	}
 
 	serverSetter.Addr = Config.ReverseProxyPort
 	serverSetter.Handler = mux
+	serverSetter.TLSConfig = certs.GetAutoCertConfig(virtualHost, caPems)
 
-	if Config.DefaultHost != "localhost" {
-		serverSetter.TLSConfig = configs.GetTlsConfig(virtualHost, caPems)
-	}
 }
 
 func redirectToWWW(hostname string, mux *http.ServeMux) {
@@ -131,4 +135,49 @@ func redirectToWWW(hostname string, mux *http.ServeMux) {
 				http.Redirect(w, r, "https://"+hostname, http.StatusMovedPermanently)
 			}))
 	}
+}
+
+func registerVirtualHost(mux *http.ServeMux, virtualHosts interface{}, setVHostOptions fnSetOptionsVHost) {
+	for name, vHost := range transformMap(virtualHosts) {
+		vHost.SetUrlToReplace(name)
+		urlToReplace := vHost.GetUrlToReplace()
+		logs.Log.Info(fmt.Sprintf("register proxy from: '%v' to '%v'", name, vHost.GetUrl()))
+		mux.Handle(urlToReplace, vHost)
+		redirectToWWW(urlToReplace, mux)
+		if setVHostOptions != nil {
+			setVHostOptions(vHost)
+		}
+	}
+}
+
+func transformMap(virtualHosts interface{}) map[string]hosts.IVirtualHost {
+	result := make(map[string]hosts.IVirtualHost)
+
+	switch t := virtualHosts.(type) {
+	case map[string]*hosts.WebVirtualHost:
+		for n, v := range t {
+			result[n] = v
+		}
+	case map[string]*hosts.SshVirtualHost:
+		for n, v := range t {
+			result[n] = v
+		}
+	case map[string]*hosts.GrpcJsonVirtualHost:
+		for n, v := range t {
+			result[n] = v
+		}
+	case map[string]*hosts.GrpcWebVirtualHost:
+		for n, v := range t {
+			result[n] = v
+		}
+	default:
+		v := reflect.ValueOf(virtualHosts)
+		if v.Kind() == reflect.Map {
+			for _, key := range v.MapKeys() {
+				strct := v.MapIndex(key)
+				logs.Log.Info(fmt.Sprint(key.Interface(), strct.Interface()))
+			}
+		}
+	}
+	return result
 }
