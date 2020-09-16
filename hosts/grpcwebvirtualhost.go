@@ -8,16 +8,14 @@ import (
 	"strconv"
 
 	"github.com/janmbaco/go-infrastructure/errorhandler"
-	"github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
 	"github.com/janmbaco/go-reverseproxy-ssl/grpcUtil"
 	"github.com/mwitkow/grpc-proxy/proxy"
 )
 
 type GrpcWebVirtualHost struct {
-	*VirtualHost
+	*ClientCertificateHost
 	*grpcUtil.GrpcWebProxy
-	TlsDefs   *certs.TlsDefs `json:"tls_config"`
-	Authority string         `json:"authority"`
+	Authority string `json:"authority"`
 }
 
 func (this *GrpcWebVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -31,8 +29,8 @@ func (this *GrpcWebVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Requ
 		opt = append(opt, grpc.WithAuthority(this.Authority))
 	}
 
-	if this.TlsDefs != nil {
-		opt = append(opt, grpc.WithTransportCredentials(credentials.NewTLS(this.TlsDefs.GetTlsConfig())))
+	if this.ClientCertificate != nil {
+		opt = append(opt, grpc.WithTransportCredentials(credentials.NewTLS(this.ClientCertificate.GetTlsConfig())))
 	} else {
 		opt = append(opt, grpc.WithInsecure())
 	}

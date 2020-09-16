@@ -4,10 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
-	"github.com/janmbaco/go-reverseproxy-ssl/grpcUtil"
 	"github.com/janmbaco/go-reverseproxy-ssl/hosts"
+	"golang.org/x/crypto/acme/autocert"
 	"net/http"
-	"os"
 	"reflect"
 	"strings"
 
@@ -19,11 +18,9 @@ import (
 
 var Config *configs.Config
 
-type fnSetOptionsVHost func(hosts.IVirtualHost)
-
 func main() {
 
-	var configfile = flag.String("config", os.Args[0]+".config", "Config File")
+	var configfile = flag.String("config", "go_reverseproxy_ssl.config", "Config File")
 	flag.Parse()
 
 	Config = setDefaultConfig()
@@ -53,25 +50,19 @@ func setLogConfiguration() {
 func setDefaultConfig() *configs.Config {
 	//default config if file is not found
 	return &configs.Config{
-		GrpcJsonVirtualHosts: map[string]*hosts.GrpcJsonVirtualHost{
-			"www.pareceproxy.com": {
-				VirtualHost: &hosts.VirtualHost{
-					Scheme:   "http",
-					HostName: "localhost",
-					Port:     8080,
-				},
-			},
-		},
-		GrpcWebVirtualHosts: map[string]*hosts.GrpcWebVirtualHost{
+		WebVirtualHosts: map[string]*hosts.WebVirtualHost{
 			"www.example.com": {
-				VirtualHost: &hosts.VirtualHost{
-					Scheme:   "http",
-					HostName: "loclahost",
-					Port:     8080,
-				},
-				GrpcWebProxy: &grpcUtil.GrpcWebProxy{
-					AllowAllOrigins: true,
-					UseWebSockets:   true,
+				ClientCertificateHost: &hosts.ClientCertificateHost{
+					VirtualHost: &hosts.VirtualHost{
+						Scheme:   "http",
+						HostName: "localhost",
+						Port:     4200,
+						ServerCertificate: &certs.CertificateDefs{
+							CaPem:      "./certs/CA-cert.pem",
+							PublicKey:  "./certs/www.example.com.cert",
+							PrivateKey: "./certs/www.example.com.key",
+						},
+					},
 				},
 			},
 		},
@@ -97,25 +88,20 @@ func reverseProxy(serverSetter *server.ServerSetter) {
 
 	mux := http.NewServeMux()
 
-	var virtualHost []string
-	var caPems []string
-
-	registerVirtualHost(mux, Config.WebVirtualHosts, func(vHost hosts.IVirtualHost) {
-		virtualHost = append(virtualHost, vHost.GetHostToReplace())
-		if caPem := vHost.GetCaPem(); len(caPem) > 0 {
-			caPems = append(caPems, caPem)
-		}
+	certManager := certs.NewCertManager(&autocert.Manager{
+		Prompt: autocert.AcceptTOS,
+		Cache:  autocert.DirCache("./certs"),
 	})
 
-	registerVirtualHost(mux, Config.SshVirtualHosts, nil)
-	registerVirtualHost(mux, Config.GrpcJsonVirtualHosts, nil)
-	registerVirtualHost(mux, Config.GrpcWebVirtualHosts, nil)
+	registerVirtualHost(mux, certManager, transformMap(Config.WebVirtualHosts))
+	registerVirtualHost(mux, certManager, transformMap(Config.GrpcJsonVirtualHosts))
+	registerVirtualHost(mux, certManager, transformMap(Config.GrpcWebVirtualHosts))
+	registerVirtualHost(mux, certManager, transformMap(Config.SshVirtualHosts))
 
 	logs.Log.Info(fmt.Sprintf("register default host: '%v'", Config.DefaultHost))
 	mux.HandleFunc(Config.DefaultHost+"/", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("started..."))
 	})
-	virtualHost = append(virtualHost, Config.DefaultHost)
 
 	if Config.DefaultHost != "localhost" {
 		redirectToWWW(Config.DefaultHost, mux)
@@ -123,7 +109,7 @@ func reverseProxy(serverSetter *server.ServerSetter) {
 
 	serverSetter.Addr = Config.ReverseProxyPort
 	serverSetter.Handler = mux
-	serverSetter.TLSConfig = certs.GetAutoCertConfig(virtualHost, caPems)
+	serverSetter.TLSConfig = certManager.GetTlsConfig()
 
 }
 
@@ -137,16 +123,19 @@ func redirectToWWW(hostname string, mux *http.ServeMux) {
 	}
 }
 
-func registerVirtualHost(mux *http.ServeMux, virtualHosts interface{}, setVHostOptions fnSetOptionsVHost) {
-	for name, vHost := range transformMap(virtualHosts) {
+func registerVirtualHost(mux *http.ServeMux, certManager *certs.CertManager, virtualHosts map[string]hosts.IVirtualHost) {
+	for name, vHost := range virtualHosts {
 		vHost.SetUrlToReplace(name)
 		urlToReplace := vHost.GetUrlToReplace()
 		logs.Log.Info(fmt.Sprintf("register proxy from: '%v' to '%v'", name, vHost.GetUrl()))
 		mux.Handle(urlToReplace, vHost)
-		redirectToWWW(urlToReplace, mux)
-		if setVHostOptions != nil {
-			setVHostOptions(vHost)
+		if vHost.IsAutoCert() {
+			certManager.AddAutoCertificate(vHost.GetHostToReplace())
+		} else {
+			certManager.AddCertificate(vHost.GetHostToReplace(), vHost.GetServerCertificate())
 		}
+		certManager.AddClientCA(vHost.GetAuthorizedCAs())
+		redirectToWWW(urlToReplace, mux)
 	}
 }
 

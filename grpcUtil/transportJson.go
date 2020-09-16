@@ -26,10 +26,10 @@ const (
 )
 
 type TransportJSon struct {
-	TlsDefs *certs.TlsDefs
+	TlsDefs *certs.CertificateDefs
 }
 
-func NewTransportJSon(tlsDefs *certs.TlsDefs) *TransportJSon {
+func NewTransportJSon(tlsDefs *certs.CertificateDefs) *TransportJSon {
 	return &TransportJSon{TlsDefs: tlsDefs}
 }
 
