@@ -114,7 +114,7 @@ func reverseProxy(serverSetter *server.ServerSetter) {
 }
 
 func redirectToWWW(hostname string, mux *http.ServeMux) {
-	if strings.Contains(hostname, "www") {
+	if strings.HasPrefix(hostname, "www") {
 		//redirect to web host with www.
 		mux.Handle(strings.Replace(hostname, "www.", "", 1),
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
