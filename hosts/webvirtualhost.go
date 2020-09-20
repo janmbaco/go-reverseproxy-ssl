@@ -2,14 +2,12 @@ package hosts
 
 import (
 	"encoding/base64"
-	"github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
 	"net/http"
 )
 
 type WebVirtualHost struct {
-	*VirtualHost
+	*ClientCertificateHost
 	ResponseHeaders  map[string]string `json:"response_headers"`
-	TlsDefs          *certs.TlsDefs    `json:"tls_defs"`
 	NeedPkFromClient bool              `json:"need_pk_from_client"`
 }
 
@@ -20,15 +18,15 @@ func (this *WebVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 	}
 
 	transport := http.DefaultTransport.(*http.Transport)
-	if this.TlsDefs != nil {
-		transport.TLSClientConfig = this.TlsDefs.GetTlsConfig()
+	if this.ClientCertificate != nil {
+		transport.TLSClientConfig = this.ClientCertificate.GetTlsConfig()
 	}
 
 	this.serve(rw, req, func(outReq *http.Request) {
 		this.redirectRequest(outReq, req)
 		if this.NeedPkFromClient {
 			pubKey := base64.URLEncoding.EncodeToString(req.TLS.PeerCertificates[0].RawSubjectPublicKeyInfo)
-			outReq.Header.Set("X-Forwarded-ClientKey", pubKey)
+			outReq.Header.Set("X-Forwarded-PrivateKey", pubKey)
 		}
 	}, transport)
 }

@@ -6,13 +6,11 @@ import (
 	"strconv"
 
 	"github.com/janmbaco/go-infrastructure/errorhandler"
-	"github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
 	"github.com/janmbaco/go-reverseproxy-ssl/grpcUtil"
 )
 
 type GrpcJsonVirtualHost struct {
-	*VirtualHost
-	TlsDefs *certs.TlsDefs `json:"tls_config"`
+	*ClientCertificateHost
 }
 
 func (this *GrpcJsonVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -20,6 +18,6 @@ func (this *GrpcJsonVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Req
 	errorhandler.TryPanic(err)
 	this.serve(rw, req, func(outReq *http.Request) {
 		this.redirectRequest(outReq, req)
-	}, grpcUtil.NewTransportJSon(this.TlsDefs))
+	}, grpcUtil.NewTransportJSon(this.ClientCertificate))
 
 }

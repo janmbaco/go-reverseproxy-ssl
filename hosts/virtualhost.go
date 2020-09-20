@@ -1,6 +1,7 @@
 package hosts
 
 import (
+	"crypto/tls"
 	"fmt"
 	"github.com/janmbaco/go-infrastructure/errorhandler"
 	"net/http"
@@ -18,19 +19,21 @@ type IVirtualHost interface {
 	GetHostToReplace() string
 	GetUrlToReplace() string
 	GetUrl() string
-	GetCaPem() string
+	GetAuthorizedCAs() []string
+	IsAutoCert() bool
+	GetServerCertificate() *tls.Certificate
 	ServeHTTP(rw http.ResponseWriter, req *http.Request)
 }
 
 type VirtualHost struct {
-	Scheme        string         `json:"scheme"`
-	HostName      string         `json:"host_name"`
-	Port          uint           `json:"port"`
-	Path          string         `json:"path"`
-	TlsDefs       *certs.TlsDefs `json:"tls_config"`
-	urlToReplace  string
-	pathToDelete  string
-	hostToReplace string
+	Scheme            string                 `json:"scheme"`
+	HostName          string                 `json:"host_name"`
+	Port              uint                   `json:"port"`
+	Path              string                 `json:"path"`
+	ServerCertificate *certs.CertificateDefs `json:"server_certificate"`
+	urlToReplace      string
+	pathToDelete      string
+	hostToReplace     string
 }
 
 func (this *VirtualHost) SetUrlToReplace(url string) {
@@ -59,16 +62,30 @@ func (this *VirtualHost) GetUrlToReplace() string {
 	return this.urlToReplace
 }
 
-func (this *VirtualHost) GetCaPem() string {
-	var result string
-	if this.TlsDefs != nil && len(this.TlsDefs.CaPem) > 0 {
-		result = this.TlsDefs.CaPem
-	}
-	return result
-}
-
 func (this *VirtualHost) GetUrl() string {
 	return fmt.Sprintf("'%v://%v:%v/%v'", this.Scheme, this.HostName, this.Port, this.Path)
+}
+
+func (this *VirtualHost) IsAutoCert() bool {
+	isAutoCert := true
+	if this.ServerCertificate != nil {
+		if len(this.ServerCertificate.PublicKey) > 0 && len(this.ServerCertificate.PrivateKey) > 0 {
+			isAutoCert = false
+		}
+	}
+	return isAutoCert
+}
+
+func (this *VirtualHost) GetServerCertificate() *tls.Certificate {
+	cert := this.ServerCertificate.GetCertificate()
+	return &cert
+}
+func (this *VirtualHost) GetAuthorizedCAs() []string {
+	CAs := make([]string, 0)
+	if this.ServerCertificate != nil && len(this.ServerCertificate.CaPem) > 0 {
+		CAs = append(CAs, this.ServerCertificate.CaPem)
+	}
+	return CAs
 }
 
 func (this *VirtualHost) serve(rw http.ResponseWriter, req *http.Request, directorFunc func(outReq *http.Request), transport http.RoundTripper) {
@@ -93,7 +110,7 @@ func (this *VirtualHost) getPath(virtualPath string) string {
 		}
 	}
 	b.WriteString(strings.Replace(virtualPath, this.pathToDelete, "", 1))
-	return b.String()
+	return strings.ReplaceAll(b.String(), "//", "/")
 }
 
 func (this *VirtualHost) redirectRequest(outReq *http.Request, req *http.Request) {
