@@ -1,17 +1,15 @@
 package grpcUtil
 
 import (
-	"context"
-	"github.com/mwitkow/grpc-proxy/proxy"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/grpclog"
-	"google.golang.org/grpc/metadata"
 	"net/http"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 )
 
 type GrpcWebProxy struct {
+	*GrpcProxy
 	AllowAllOrigins      bool           `json:"allow_all_origins"`
 	AllowedOrigins       AllowedOrigins `json:"allowed_origins"`
 	UseWebSockets        bool           `json:"use_web_sockets"`
@@ -21,20 +19,7 @@ type GrpcWebProxy struct {
 
 func (this *GrpcWebProxy) WrappedGrpcServer(clientConn *grpc.ClientConn) *grpcweb.WrappedGrpcServer {
 
-	director := func(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error) {
-		md, _ := metadata.FromIncomingContext(ctx)
-		outCtx, _ := context.WithCancel(ctx)
-		mdCopy := md.Copy()
-		delete(mdCopy, "user-agent")
-		delete(mdCopy, "connection")
-		outCtx = metadata.NewOutgoingContext(outCtx, mdCopy)
-		return outCtx, clientConn, nil
-	}
-
-	grpcServer := grpc.NewServer(
-		grpc.CustomCodec(proxy.Codec()), // needed for proxy to function.
-		grpc.UnknownServiceHandler(proxy.TransparentHandler(director)),
-		grpc.MaxRecvMsgSize(1024*1024*4))
+	grpcServer := this.NewServer(clientConn)
 
 	if this.AllowedOrigins == nil {
 		this.AllowedOrigins = make([]string, 0)

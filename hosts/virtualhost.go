@@ -3,10 +3,8 @@ package hosts
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/janmbaco/go-infrastructure/errorhandler"
 	"net/http"
 	"net/http/httputil"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -89,8 +87,6 @@ func (this *VirtualHost) GetAuthorizedCAs() []string {
 }
 
 func (this *VirtualHost) serve(rw http.ResponseWriter, req *http.Request, directorFunc func(outReq *http.Request), transport http.RoundTripper) {
-	_, err := url.Parse(this.Scheme + "://" + this.HostName + ":" + strconv.Itoa(int(this.Port)))
-	errorhandler.TryPanic(err)
 	(&httputil.ReverseProxy{
 		Director:  directorFunc,
 		ErrorLog:  logs.Log.ErrorLogger,
@@ -122,4 +118,12 @@ func (this *VirtualHost) redirectRequest(outReq *http.Request, req *http.Request
 	outReq.Header.Set("X-Forwarded-Proto", "https")
 
 	logs.Log.Info(fmt.Sprintf("from '%v%v%v' to '%v%v%v'", req.URL.Host, req.URL.Path, req.URL.RawQuery, outReq.URL.Host, outReq.URL.Path, outReq.URL.RawPath))
+}
+
+func (this *VirtualHost) getHost() string {
+	var b strings.Builder
+	b.WriteString(this.HostName)
+	b.WriteString(":")
+	b.WriteString(strconv.Itoa(int(this.Port)))
+	return b.String()
 }
