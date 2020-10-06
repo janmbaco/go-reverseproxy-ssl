@@ -3,9 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
-	"github.com/janmbaco/go-reverseproxy-ssl/hosts"
-	"golang.org/x/crypto/acme/autocert"
 	"net/http"
 	"reflect"
 	"strings"
@@ -14,6 +11,9 @@ import (
 	"github.com/janmbaco/go-infrastructure/logs"
 	"github.com/janmbaco/go-infrastructure/server"
 	"github.com/janmbaco/go-reverseproxy-ssl/configs"
+	"github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
+	"github.com/janmbaco/go-reverseproxy-ssl/hosts"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 var Config *configs.Config
@@ -59,7 +59,7 @@ func setDefaultConfig() *configs.Config {
 						Port:     4200,
 						ServerCertificate: &certs.CertificateDefs{
 							CaPem:      "./certs/CA-cert.pem",
-							PublicKey:  "./certs/www.example.com.cert",
+							PublicKey:  "./certs/www.example.com.pem",
 							PrivateKey: "./certs/www.example.com.key",
 						},
 					},
@@ -94,6 +94,7 @@ func reverseProxy(serverSetter *server.ServerSetter) {
 	})
 
 	registerVirtualHost(mux, certManager, transformMap(Config.WebVirtualHosts))
+	registerVirtualHost(mux, certManager, transformMap(Config.GrpcVirtualHosts))
 	registerVirtualHost(mux, certManager, transformMap(Config.GrpcJsonVirtualHosts))
 	registerVirtualHost(mux, certManager, transformMap(Config.GrpcWebVirtualHosts))
 	registerVirtualHost(mux, certManager, transformMap(Config.SshVirtualHosts))
@@ -127,7 +128,7 @@ func registerVirtualHost(mux *http.ServeMux, certManager *certs.CertManager, vir
 	for name, vHost := range virtualHosts {
 		vHost.SetUrlToReplace(name)
 		urlToReplace := vHost.GetUrlToReplace()
-		logs.Log.Info(fmt.Sprintf("register proxy from: '%v' to '%v'", name, vHost.GetUrl()))
+		logs.Log.Info(fmt.Sprintf("register proxy from: '%v' to %v", name, vHost.GetUrl()))
 		mux.Handle(urlToReplace, vHost)
 		if vHost.IsAutoCert() {
 			certManager.AddAutoCertificate(vHost.GetHostToReplace())
@@ -148,6 +149,10 @@ func transformMap(virtualHosts interface{}) map[string]hosts.IVirtualHost {
 			result[n] = v
 		}
 	case map[string]*hosts.SshVirtualHost:
+		for n, v := range t {
+			result[n] = v
+		}
+	case map[string]*hosts.GrpcVirtualHost:
 		for n, v := range t {
 			result[n] = v
 		}

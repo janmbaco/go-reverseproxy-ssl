@@ -8,6 +8,7 @@ import (
 type Config struct {
 	WebVirtualHosts      map[string]*hosts.WebVirtualHost      `json:"web_virtual_hosts"`
 	SshVirtualHosts      map[string]*hosts.SshVirtualHost      `json:"ssh_virtual_hosts"`
+	GrpcVirtualHosts     map[string]*hosts.GrpcVirtualHost     `json:"grpc_virtual_hosts"`
 	GrpcJsonVirtualHosts map[string]*hosts.GrpcJsonVirtualHost `json:"grpc_json_virtual_hosts"`
 	GrpcWebVirtualHosts  map[string]*hosts.GrpcWebVirtualHost  `json:"grpc_web_virtual_hosts"`
 	DefaultHost          string                                `json:"default_host"`
