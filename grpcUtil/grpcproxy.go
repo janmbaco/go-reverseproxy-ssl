@@ -11,6 +11,8 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+const maxMsgSize = 1024 * 1024 * 4
+
 type GrpcProxy struct {
 	GrpcServices        map[string][]string `json:"grpc_services"`
 	IsTransparentServer bool                `json:"is_transparent_server"`
@@ -34,11 +36,11 @@ func (this *GrpcProxy) NewServer(clientConn *grpc.ClientConn) *grpc.Server {
 		grpcServer = grpc.NewServer(
 			grpc.CustomCodec(proxy.Codec()), // needed for proxy to function.
 			grpc.UnknownServiceHandler(proxy.TransparentHandler(director)),
-			grpc.MaxRecvMsgSize(1024*1024*4))
+			grpc.MaxRecvMsgSize(maxMsgSize))
 	} else {
 		grpcServer = grpc.NewServer(
 			grpc.CustomCodec(proxy.Codec()), // needed for proxy to function.
-			grpc.MaxRecvMsgSize(1024*1024*4))
+			grpc.MaxRecvMsgSize(maxMsgSize))
 	}
 
 	if len(this.GrpcServices) > 0 {
