@@ -26,8 +26,9 @@ func main() {
 	Config = setDefaultConfig()
 	configHandler := config.NewFileConfigHandler(*configfile)
 	configHandler.Load(Config)
-	setLogConfiguration()
-	configHandler.OnModifiedConfigSubscriber(setLogConfiguration)
+	logConfiguration := setLogConfiguration
+	logConfiguration()
+	configHandler.OnModifiedConfigSubscriber(&logConfiguration)
 
 	logs.Log.Info("")
 	logs.Log.Info("Start Server Application")
