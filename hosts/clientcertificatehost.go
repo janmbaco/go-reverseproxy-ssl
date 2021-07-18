@@ -3,7 +3,7 @@ package hosts
 import "github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
 
 type ClientCertificateHost struct {
-	*VirtualHost
+	VirtualHost
 	ClientCertificate *certs.CertificateDefs `json:"client_certificate"`
 }
 

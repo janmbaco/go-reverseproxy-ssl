@@ -53,14 +53,14 @@ func setDefaultConfig() *configs.Config {
 	return &configs.Config{
 		WebVirtualHosts: map[string]*hosts.WebVirtualHost{
 			"www.example.com": {
-				ClientCertificateHost: &hosts.ClientCertificateHost{
-					VirtualHost: &hosts.VirtualHost{
+				ClientCertificateHost: hosts.ClientCertificateHost{
+					VirtualHost: hosts.VirtualHost{
 						Scheme:   "http",
 						HostName: "localhost",
-						Port:     4200,
+						Port:     8080,
 						ServerCertificate: &certs.CertificateDefs{
 							CaPem:      "./certs/CA-cert.pem",
-							PublicKey:  "./certs/www.example.com.pem",
+							PublicKey:  "./certs/www.example.com.crt",
 							PrivateKey: "./certs/www.example.com.key",
 						},
 					},

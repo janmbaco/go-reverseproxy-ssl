@@ -10,7 +10,7 @@ import (
 )
 
 type GrpcJsonVirtualHost struct {
-	*ClientCertificateHost
+	ClientCertificateHost
 }
 
 func (this *GrpcJsonVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {

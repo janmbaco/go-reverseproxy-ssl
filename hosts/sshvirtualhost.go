@@ -12,7 +12,7 @@ import (
 )
 
 type SshVirtualHost struct {
-	*VirtualHost
+	VirtualHost
 	KnownHosts string `json:"known_hosts"`
 }
 

@@ -6,7 +6,7 @@ import (
 )
 
 type WebVirtualHost struct {
-	*ClientCertificateHost
+	ClientCertificateHost
 	ResponseHeaders  map[string]string `json:"response_headers"`
 	NeedPkFromClient bool              `json:"need_pk_from_client"`
 }

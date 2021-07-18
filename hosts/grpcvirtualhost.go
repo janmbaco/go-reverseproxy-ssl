@@ -7,8 +7,8 @@ import (
 )
 
 type GrpcVirtualHost struct {
-	*ClientCertificateHost
-	*grpcUtil.GrpcProxy
+	ClientCertificateHost
+	grpcUtil.GrpcProxy
 }
 
 func (this *GrpcVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {

@@ -9,7 +9,7 @@ import (
 )
 
 type GrpcWebProxy struct {
-	*GrpcProxy
+	GrpcProxy
 	AllowAllOrigins      bool           `json:"allow_all_origins"`
 	AllowedOrigins       AllowedOrigins `json:"allowed_origins"`
 	UseWebSockets        bool           `json:"use_web_sockets"`
