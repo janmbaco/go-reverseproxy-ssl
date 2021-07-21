@@ -5,13 +5,16 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/janmbaco/go-infrastructure/errorhandler"
 	"github.com/janmbaco/go-infrastructure/logs"
 	"github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
 	"golang.org/x/net/http2"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -83,7 +86,7 @@ func handleGRPCResponse(resp *http.Response) (*http.Response, error) {
 		buff := bytes.NewBuffer(nil)
 		grpcMessage := resp.Header.Get(headerGRPCMessage)
 		j, _ := json.Marshal(grpcMessage)
-		buff.WriteString(`{"error":` + string(j) + ` ,"code":` + code + `}`)
+		buff.WriteString(`{"error":` + strings.ReplaceAll(string(j), `"`, "'") + ` ,"code":` + code + `}`)
 
 		resp.Body = ioutil.NopCloser(buff)
 		resp.StatusCode = 500
@@ -104,27 +107,35 @@ func modifyRequestToJSONgRPC(req *http.Request) *http.Request {
 	// https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md
 
 	var body []byte
+	var err error
 	// read body so we can add the grpc prefix
 	if req.Body != nil {
-		body, _ = ioutil.ReadAll(req.Body)
+		body, err = ioutil.ReadAll(req.Body)
+		errorhandler.TryPanic(err)
 	}
-
-	b := make([]byte, 0, len(body)+5)
+	lenBody := len(body)
+	if lenBody < 0 {
+		panic(errors.New("request body incorrect"))
+	}
+	b := make([]byte, 0, lenBody+5)
 	buff := bytes.NewBuffer(b)
 
 	// grpc prefix is
 	// 1 byte: compression indicator
 	// 4 bytes: content length (excluding prefix)
-	_ = buff.WriteByte(grpcNoCompression) // 0 or 1, indicates compressed payload
+	errorhandler.TryPanic(buff.WriteByte(grpcNoCompression)) // 0 or 1, indicates compressed payload
 
 	lenBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(lenBytes, uint32(len(body)))
 
-	_, _ = buff.Write(lenBytes)
-	_, _ = buff.Write(body)
+	_, err = buff.Write(lenBytes)
+	errorhandler.TryPanic(err)
+	_, err = buff.Write(body)
+	errorhandler.TryPanic(err)
 
 	// create new request
-	outReq, _ := http.NewRequest(req.Method, req.URL.String(), buff)
+	outReq, err := http.NewRequest(req.Method, req.URL.String(), buff)
+	errorhandler.TryPanic(err)
 	outReq.Header = req.Header
 
 	// remove content length header
