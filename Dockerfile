@@ -2,7 +2,11 @@ FROM alpine
 
 WORKDIR /app
 
-COPY build/go-reverseproxy-ssl .
+RUN pwd
+
+RUN ls -al
+
+COPY go-reverseproxy-ssl .
 
 EXPOSE 80
 EXPOSE 443
