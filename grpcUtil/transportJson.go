@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -85,7 +86,7 @@ func handleGRPCResponse(resp *http.Response) (*http.Response, error) {
 		buff := bytes.NewBuffer(nil)
 		grpcMessage := resp.Header.Get(headerGRPCMessage)
 		j, _ := json.Marshal(grpcMessage)
-		st := strings.ReplaceAll(string(j), `"`, "'")
+		st, _ := strconv.Unquote(fmt.Sprintf("%v", strings.ReplaceAll(string(j), `"`, "'")))
 		buff.WriteString(fmt.Sprintf(`{"error": %v ,"code": %v}`, st, code))
 
 		resp.Body = ioutil.NopCloser(buff)
@@ -113,7 +114,10 @@ func modifyRequestToJSONgRPC(req *http.Request) *http.Request {
 		body, err = ioutil.ReadAll(req.Body)
 		errorhandler.TryPanic(err)
 	}
-	lenBody := uint(len(body))
+	lenBody := len(body)
+	if lenBody < 0 || lenBody > ^(0)-5 {
+		panic("invalid request body")
+	}
 	b := make([]byte, 0, lenBody+5)
 	buff := bytes.NewBuffer(b)
 
