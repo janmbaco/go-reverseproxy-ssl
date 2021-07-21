@@ -36,8 +36,8 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
         
-      - name: Test
-        run: ls -al
+      - name: pwd
+        run: pwd
 
       - name: Build and push
         id: docker_build
