@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/janmbaco/go-infrastructure/errorhandler"
 	"github.com/janmbaco/go-infrastructure/logs"
@@ -86,7 +85,8 @@ func handleGRPCResponse(resp *http.Response) (*http.Response, error) {
 		buff := bytes.NewBuffer(nil)
 		grpcMessage := resp.Header.Get(headerGRPCMessage)
 		j, _ := json.Marshal(grpcMessage)
-		buff.WriteString(`{"error":` + strings.ReplaceAll(string(j), `"`, "'") + ` ,"code":` + code + `}`)
+		st := strings.ReplaceAll(string(j), `"`, "'")
+		buff.WriteString(fmt.Sprintf(`{"error": %v ,"code": %v}`, st, code))
 
 		resp.Body = ioutil.NopCloser(buff)
 		resp.StatusCode = 500
@@ -113,10 +113,7 @@ func modifyRequestToJSONgRPC(req *http.Request) *http.Request {
 		body, err = ioutil.ReadAll(req.Body)
 		errorhandler.TryPanic(err)
 	}
-	lenBody := len(body)
-	if lenBody < 0 {
-		panic(errors.New("request body incorrect"))
-	}
+	lenBody := uint(len(body))
 	b := make([]byte, 0, lenBody+5)
 	buff := bytes.NewBuffer(b)
 
