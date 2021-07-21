@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"github.com/janmbaco/go-infrastructure/errorhandler"
 	"github.com/janmbaco/go-infrastructure/logs"
@@ -13,8 +12,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -85,9 +82,7 @@ func handleGRPCResponse(resp *http.Response) (*http.Response, error) {
 	if code != "0" && code != "" {
 		buff := bytes.NewBuffer(nil)
 		grpcMessage := resp.Header.Get(headerGRPCMessage)
-		j, _ := json.Marshal(grpcMessage)
-		st, _ := strconv.Unquote(fmt.Sprintf("%v", strings.ReplaceAll(string(j), `"`, "'")))
-		buff.WriteString(fmt.Sprintf(`{"error": %v ,"code": %v}`, st, code))
+		buff.WriteString(fmt.Sprintf(`{"error": %v ,"code": %v}`, grpcMessage, code))
 
 		resp.Body = ioutil.NopCloser(buff)
 		resp.StatusCode = 500
