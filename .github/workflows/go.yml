@@ -19,7 +19,7 @@ jobs:
           go-version: 1.14
 
       - name: Build
-        run: go build -v -o build/go-reverseproxy-ssl .
+        run: GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -o build/go-reverseproxy-ssl .
 
       - name: Test
         run: go test -v ./...
