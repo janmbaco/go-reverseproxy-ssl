@@ -1,4 +1,4 @@
-package grpcUtil
+package grpcutil
 
 import (
 	"bytes"
@@ -25,18 +25,21 @@ const (
 	grpcNoCompression byte = 0x00
 )
 
-type TransportJSon struct {
+// TransportJson is used to transport the communication between a grpc server and a web client (json).
+type TransportJson struct {
 	TlsDefs *certs.CertificateDefs
 }
 
-func NewTransportJSon(tlsDefs *certs.CertificateDefs) *TransportJSon {
-	return &TransportJSon{TlsDefs: tlsDefs}
+// NewTransportJson returns a TransportJson
+func NewTransportJson(tlsDefs *certs.CertificateDefs) *TransportJson {
+	return &TransportJson{TlsDefs: tlsDefs}
 }
 
-func (this *TransportJSon) RoundTrip(req *http.Request) (*http.Response, error) {
+// RoundTrip return the response in json format.
+func (transportJson *TransportJson) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	req = modifyRequestToJSONgRPC(req)
-	resp, err := this.getClient().Do(req)
+	resp, err := transportJson.getClient().Do(req)
 	if err != nil {
 		logs.Log.Error(fmt.Sprintf("unable to do request err=[%s]", err))
 
@@ -54,9 +57,9 @@ func (this *TransportJSon) RoundTrip(req *http.Request) (*http.Response, error) 
 	return resp, err
 }
 
-func (this *TransportJSon) getClient() *http.Client {
+func (transportJson *TransportJson) getClient() *http.Client {
 	var client *http.Client
-	if this.TlsDefs == nil {
+	if transportJson.TlsDefs == nil {
 		client = &http.Client{
 			// Skip TLS dial
 			Transport: &http2.Transport{

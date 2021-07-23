@@ -6,18 +6,18 @@ import (
 	"strconv"
 
 	"github.com/janmbaco/go-infrastructure/errorhandler"
-	"github.com/janmbaco/go-reverseproxy-ssl/grpcUtil"
+	"github.com/janmbaco/go-reverseproxy-ssl/grpcutil"
 )
 
+// GrpcJsonVirtualHost is used to configure a virtual host with a web client (json) and a gRPC server.
 type GrpcJsonVirtualHost struct {
 	ClientCertificateHost
 }
 
-func (this *GrpcJsonVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	_, err := url.Parse(this.Scheme + "://" + this.HostName + ":" + strconv.Itoa(int(this.Port)))
+func (grpcJsonVirtualHost *GrpcJsonVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	_, err := url.Parse(grpcJsonVirtualHost.Scheme + "://" + grpcJsonVirtualHost.HostName + ":" + strconv.Itoa(int(grpcJsonVirtualHost.Port)))
 	errorhandler.TryPanic(err)
-	this.serve(rw, req, func(outReq *http.Request) {
-		this.redirectRequest(outReq, req)
-	}, grpcUtil.NewTransportJSon(this.ClientCertificate))
-
+	grpcJsonVirtualHost.serve(rw, req, func(outReq *http.Request) {
+		grpcJsonVirtualHost.redirectRequest(outReq, req)
+	}, grpcutil.NewTransportJson(grpcJsonVirtualHost.ClientCertificate))
 }

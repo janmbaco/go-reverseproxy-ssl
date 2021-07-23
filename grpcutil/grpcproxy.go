@@ -1,4 +1,4 @@
-package grpcUtil
+package grpcutil
 
 import (
 	"context"
@@ -13,13 +13,15 @@ import (
 
 const maxMsgSize = 1024 * 1024 * 4
 
+// GrpcProxy is the object responsible to create a communication  gRPC Server that calls other gRPC Server.
 type GrpcProxy struct {
 	GrpcServices        map[string][]string `json:"grpc_services"`
 	IsTransparentServer bool                `json:"is_transparent_server"`
 	Authority           string              `json:"authority"`
 }
 
-func (this *GrpcProxy) NewServer(clientConn *grpc.ClientConn) *grpc.Server {
+// NewServer returns a grpc Server
+func (grpcProxy *GrpcProxy) NewServer(clientConn *grpc.ClientConn) *grpc.Server {
 
 	director := func(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error) {
 		md, _ := metadata.FromIncomingContext(ctx)
@@ -32,7 +34,7 @@ func (this *GrpcProxy) NewServer(clientConn *grpc.ClientConn) *grpc.Server {
 	}
 	var grpcServer *grpc.Server
 
-	if this.IsTransparentServer {
+	if grpcProxy.IsTransparentServer {
 		grpcServer = grpc.NewServer(
 			grpc.CustomCodec(proxy.Codec()), // needed for proxy to function.
 			grpc.UnknownServiceHandler(proxy.TransparentHandler(director)),
@@ -43,8 +45,8 @@ func (this *GrpcProxy) NewServer(clientConn *grpc.ClientConn) *grpc.Server {
 			grpc.MaxRecvMsgSize(maxMsgSize))
 	}
 
-	if len(this.GrpcServices) > 0 {
-		for serviceName, methodsNames := range this.GrpcServices {
+	if len(grpcProxy.GrpcServices) > 0 {
+		for serviceName, methodsNames := range grpcProxy.GrpcServices {
 			proxy.RegisterService(grpcServer, director, serviceName, methodsNames...)
 		}
 	}
@@ -52,12 +54,13 @@ func (this *GrpcProxy) NewServer(clientConn *grpc.ClientConn) *grpc.Server {
 
 }
 
-func (this *GrpcProxy) CreateClientConn(clientCertificate *certs.CertificateDefs, host string) *grpc.ClientConn {
+// CreateClientConn return a Client for a gRPC server.
+func (grpcProxy *GrpcProxy) CreateClientConn(clientCertificate *certs.CertificateDefs, host string) *grpc.ClientConn {
 	var opt []grpc.DialOption
 	opt = append(opt, grpc.WithCodec(proxy.Codec()))
 
-	if len(this.Authority) > 0 {
-		opt = append(opt, grpc.WithAuthority(this.Authority))
+	if len(grpcProxy.Authority) > 0 {
+		opt = append(opt, grpc.WithAuthority(grpcProxy.Authority))
 	}
 
 	if clientCertificate != nil {

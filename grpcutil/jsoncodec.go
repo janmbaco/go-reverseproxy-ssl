@@ -1,4 +1,4 @@
-package grpcUtil
+package grpcutil
 
 import (
 	"bytes"

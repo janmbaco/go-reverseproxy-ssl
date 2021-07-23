@@ -3,14 +3,15 @@ package hosts
 import (
 	"net/http"
 
-	"github.com/janmbaco/go-reverseproxy-ssl/grpcUtil"
+	"github.com/janmbaco/go-reverseproxy-ssl/grpcutil"
 )
 
+// GrpcWebVirtualHost is used to configure a virtual host using gRPC-Web technology
 type GrpcWebVirtualHost struct {
 	ClientCertificateHost
-	grpcUtil.GrpcWebProxy
+	grpcutil.GrpcWebProxy
 }
 
-func (this *GrpcWebVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	this.WrappedGrpcServer(this.CreateClientConn(this.ClientCertificate, this.getHost())).ServeHTTP(rw, req)
+func (grpcWebVirtualHost *GrpcWebVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	grpcWebVirtualHost.WrappedGrpcServer(grpcWebVirtualHost.CreateClientConn(grpcWebVirtualHost.ClientCertificate, grpcWebVirtualHost.getHost())).ServeHTTP(rw, req)
 }

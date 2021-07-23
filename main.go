@@ -16,16 +16,16 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 )
 
-var Config *configs.Config
+var globalConfig *configs.Config
 
 func main() {
 
-	var configfile = flag.String("config", "go_reverseproxy_ssl.config", "Config File")
+	var configFile = flag.String("config", "go_reverseproxy_ssl.config", "globalConfig File")
 	flag.Parse()
 
-	Config = setDefaultConfig()
-	configHandler := config.NewFileConfigHandler(*configfile)
-	configHandler.Load(Config)
+	globalConfig = setDefaultConfig()
+	configHandler := config.NewFileConfigHandler(*configFile)
+	configHandler.Load(globalConfig)
 	logConfiguration := setLogConfiguration
 	logConfiguration()
 	configHandler.OnModifiedConfigSubscriber(&logConfiguration)
@@ -43,9 +43,9 @@ func main() {
 }
 
 func setLogConfiguration() {
-	logs.Log.SetDir(Config.LogsDir)
-	logs.Log.SetConsoleLevel(Config.LogConsoleLevel)
-	logs.Log.SetFileLogLevel(Config.LogFileLevel)
+	logs.Log.SetDir(globalConfig.LogsDir)
+	logs.Log.SetConsoleLevel(globalConfig.LogConsoleLevel)
+	logs.Log.SetFileLogLevel(globalConfig.LogFileLevel)
 }
 
 func setDefaultConfig() *configs.Config {
@@ -94,22 +94,22 @@ func reverseProxy(serverSetter *server.ServerSetter) {
 		Cache:  autocert.DirCache("./certs"),
 	})
 
-	registerVirtualHost(mux, certManager, transformMap(Config.WebVirtualHosts))
-	registerVirtualHost(mux, certManager, transformMap(Config.GrpcVirtualHosts))
-	registerVirtualHost(mux, certManager, transformMap(Config.GrpcJsonVirtualHosts))
-	registerVirtualHost(mux, certManager, transformMap(Config.GrpcWebVirtualHosts))
-	registerVirtualHost(mux, certManager, transformMap(Config.SshVirtualHosts))
+	registerVirtualHost(mux, certManager, transformMap(globalConfig.WebVirtualHosts))
+	registerVirtualHost(mux, certManager, transformMap(globalConfig.GrpcVirtualHosts))
+	registerVirtualHost(mux, certManager, transformMap(globalConfig.GrpcJsonVirtualHosts))
+	registerVirtualHost(mux, certManager, transformMap(globalConfig.GrpcWebVirtualHosts))
+	registerVirtualHost(mux, certManager, transformMap(globalConfig.SshVirtualHosts))
 
-	logs.Log.Info(fmt.Sprintf("register default host: '%v'", Config.DefaultHost))
-	mux.HandleFunc(Config.DefaultHost+"/", func(w http.ResponseWriter, r *http.Request) {
+	logs.Log.Info(fmt.Sprintf("register default host: '%v'", globalConfig.DefaultHost))
+	mux.HandleFunc(globalConfig.DefaultHost+"/", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("started..."))
 	})
 
-	if Config.DefaultHost != "localhost" {
-		redirectToWWW(Config.DefaultHost, mux)
+	if globalConfig.DefaultHost != "localhost" {
+		redirectToWWW(globalConfig.DefaultHost, mux)
 	}
 
-	serverSetter.Addr = Config.ReverseProxyPort
+	serverSetter.Addr = globalConfig.ReverseProxyPort
 	serverSetter.Handler = mux
 	serverSetter.TLSConfig = certManager.GetTlsConfig()
 

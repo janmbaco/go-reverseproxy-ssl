@@ -12,6 +12,7 @@ import (
 	"github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
 )
 
+// IVirtualHost is the definition of a object that represents a Virtual Host to reverse proxy.
 type IVirtualHost interface {
 	SetUrlToReplace(url string)
 	GetHostToReplace() string
@@ -23,6 +24,7 @@ type IVirtualHost interface {
 	ServeHTTP(rw http.ResponseWriter, req *http.Request)
 }
 
+// VirtualHost is used to configure a virtual host.
 type VirtualHost struct {
 	Scheme            string                 `json:"scheme"`
 	HostName          string                 `json:"host_name"`
@@ -34,13 +36,14 @@ type VirtualHost struct {
 	hostToReplace     string
 }
 
-func (this *VirtualHost) SetUrlToReplace(url string) {
-	this.urlToReplace = url
-	if !strings.HasSuffix(this.urlToReplace, "/") {
-		this.urlToReplace += "/"
+// SetUrlToReplace sets the url that replace to the virtual host.
+func (virtualHost *VirtualHost) SetUrlToReplace(url string) {
+	virtualHost.urlToReplace = url
+	if !strings.HasSuffix(virtualHost.urlToReplace, "/") {
+		virtualHost.urlToReplace += "/"
 	}
 	paths := strings.SplitAfterN(url, "/", 2)
-	this.hostToReplace = paths[0]
+	virtualHost.hostToReplace = paths[0]
 	if len(paths) == 2 && len(paths[1]) > 0 {
 		var b strings.Builder
 		b.WriteString("/")
@@ -48,45 +51,52 @@ func (this *VirtualHost) SetUrlToReplace(url string) {
 		if !strings.HasSuffix(paths[1], "/") {
 			b.WriteString("/")
 		}
-		this.pathToDelete = b.String()
+		virtualHost.pathToDelete = b.String()
 	}
 }
 
-func (this *VirtualHost) GetHostToReplace() string {
-	return this.hostToReplace
+// GetHostToReplace gets the host to replace by de virtual host.
+func (virtualHost *VirtualHost) GetHostToReplace() string {
+	return virtualHost.hostToReplace
 }
 
-func (this *VirtualHost) GetUrlToReplace() string {
-	return this.urlToReplace
+// GetUrlToReplace gets the url to replace by de virtual host.
+func (virtualHost *VirtualHost) GetUrlToReplace() string {
+	return virtualHost.urlToReplace
 }
 
-func (this *VirtualHost) GetUrl() string {
-	return fmt.Sprintf("'%v://%v:%v/%v'", this.Scheme, this.HostName, this.Port, this.Path)
+// GetUrl gets the url of the virtual host.
+func (virtualHost *VirtualHost) GetUrl() string {
+	return fmt.Sprintf("'%v://%v:%v/%v'", virtualHost.Scheme, virtualHost.HostName, virtualHost.Port, virtualHost.Path)
 }
 
-func (this *VirtualHost) IsAutoCert() bool {
+// IsAutoCert indicates if the virtual host is certificated by let's encrypt.
+func (virtualHost *VirtualHost) IsAutoCert() bool {
 	isAutoCert := true
-	if this.ServerCertificate != nil {
-		if len(this.ServerCertificate.PublicKey) > 0 && len(this.ServerCertificate.PrivateKey) > 0 {
+	if virtualHost.ServerCertificate != nil {
+		if len(virtualHost.ServerCertificate.PublicKey) > 0 && len(virtualHost.ServerCertificate.PrivateKey) > 0 {
 			isAutoCert = false
 		}
 	}
 	return isAutoCert
 }
 
-func (this *VirtualHost) GetServerCertificate() *tls.Certificate {
-	cert := this.ServerCertificate.GetCertificate()
+// GetServerCertificate gets de certificate of the server.
+func (virtualHost *VirtualHost) GetServerCertificate() *tls.Certificate {
+	cert := virtualHost.ServerCertificate.GetCertificate()
 	return &cert
 }
-func (this *VirtualHost) GetAuthorizedCAs() []string {
+
+// GetAuthorizedCAs gets the certificate authorities of the virtual host.
+func (virtualHost *VirtualHost) GetAuthorizedCAs() []string {
 	CAs := make([]string, 0)
-	if this.ServerCertificate != nil && len(this.ServerCertificate.CaPem) > 0 {
-		CAs = append(CAs, this.ServerCertificate.CaPem)
+	if virtualHost.ServerCertificate != nil && len(virtualHost.ServerCertificate.CaPem) > 0 {
+		CAs = append(CAs, virtualHost.ServerCertificate.CaPem)
 	}
 	return CAs
 }
 
-func (this *VirtualHost) serve(rw http.ResponseWriter, req *http.Request, directorFunc func(outReq *http.Request), transport http.RoundTripper) {
+func (virtualHost *VirtualHost) serve(rw http.ResponseWriter, req *http.Request, directorFunc func(outReq *http.Request), transport http.RoundTripper) {
 	(&httputil.ReverseProxy{
 		Director:  directorFunc,
 		ErrorLog:  logs.Log.ErrorLogger,
@@ -94,25 +104,25 @@ func (this *VirtualHost) serve(rw http.ResponseWriter, req *http.Request, direct
 	}).ServeHTTP(rw, req)
 }
 
-func (this *VirtualHost) getPath(virtualPath string) string {
+func (virtualHost *VirtualHost) getPath(virtualPath string) string {
 	var b strings.Builder
-	if len(this.Path) > 0 {
-		if !strings.HasPrefix(this.Path, "/") {
+	if len(virtualHost.Path) > 0 {
+		if !strings.HasPrefix(virtualHost.Path, "/") {
 			b.WriteString("/")
 		}
-		b.WriteString(this.Path)
-		if !strings.HasSuffix(this.Path, "/") {
+		b.WriteString(virtualHost.Path)
+		if !strings.HasSuffix(virtualHost.Path, "/") {
 			b.WriteString("/")
 		}
 	}
-	b.WriteString(strings.Replace(virtualPath, this.pathToDelete, "", 1))
+	b.WriteString(strings.Replace(virtualPath, virtualHost.pathToDelete, "", 1))
 	return strings.ReplaceAll(b.String(), "//", "/")
 }
 
-func (this *VirtualHost) redirectRequest(outReq *http.Request, req *http.Request) {
-	outReq.URL.Scheme = this.Scheme
-	outReq.URL.Host = this.HostName + ":" + strconv.Itoa(int(this.Port))
-	outReq.URL.Path = this.getPath(req.URL.Path)
+func (virtualHost *VirtualHost) redirectRequest(outReq *http.Request, req *http.Request) {
+	outReq.URL.Scheme = virtualHost.Scheme
+	outReq.URL.Host = virtualHost.HostName + ":" + strconv.Itoa(int(virtualHost.Port))
+	outReq.URL.Path = virtualHost.getPath(req.URL.Path)
 	outReq.URL.RawQuery = req.URL.RawQuery
 	outReq.Header = req.Header
 	outReq.Header.Set("X-Forwarded-Proto", "https")
@@ -120,10 +130,10 @@ func (this *VirtualHost) redirectRequest(outReq *http.Request, req *http.Request
 	logs.Log.Info(fmt.Sprintf("from '%v%v%v' to '%v%v%v'", req.URL.Host, req.URL.Path, req.URL.RawQuery, outReq.URL.Host, outReq.URL.Path, outReq.URL.RawPath))
 }
 
-func (this *VirtualHost) getHost() string {
+func (virtualHost *VirtualHost) getHost() string {
 	var b strings.Builder
-	b.WriteString(this.HostName)
+	b.WriteString(virtualHost.HostName)
 	b.WriteString(":")
-	b.WriteString(strconv.Itoa(int(this.Port)))
+	b.WriteString(strconv.Itoa(int(virtualHost.Port)))
 	return b.String()
 }

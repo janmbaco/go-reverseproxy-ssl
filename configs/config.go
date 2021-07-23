@@ -5,6 +5,9 @@ import (
 	"github.com/janmbaco/go-reverseproxy-ssl/hosts"
 )
 
+// A Config structure is used to configure multiple virtual hosts
+// for the reverse proxy, in addition to the various configuration
+// options for the reverse proxy.
 type Config struct {
 	WebVirtualHosts      map[string]*hosts.WebVirtualHost      `json:"web_virtual_hosts"`
 	SshVirtualHosts      map[string]*hosts.SshVirtualHost      `json:"ssh_virtual_hosts"`

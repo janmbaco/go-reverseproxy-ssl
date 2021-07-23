@@ -6,6 +6,8 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 )
 
+// CertManager is the object responsible for managing the
+// certificates globally for the virtual hosts of the reverse proxy
 type CertManager struct {
 	manager      *autocert.Manager
 	autoCertList []string
@@ -13,39 +15,44 @@ type CertManager struct {
 	certificates map[string]*tls.Certificate
 }
 
+// NewCertManager returns a new object of CertManager type
 func NewCertManager(manager *autocert.Manager) *CertManager {
 	return &CertManager{manager: manager, autoCertList: make([]string, 0), clientCAs: make([]string, 0), certificates: make(map[string]*tls.Certificate)}
 }
 
-func (this *CertManager) AddCertificate(vhostName string, certificate *tls.Certificate) {
-	this.certificates[vhostName] = certificate
+// AddCertificate adds a certificate to use on a virtual host
+func (certManager *CertManager) AddCertificate(vhostName string, certificate *tls.Certificate) {
+	certManager.certificates[vhostName] = certificate
 }
 
-func (this *CertManager) AddAutoCertificate(vhostName string) {
-	this.autoCertList = append(this.autoCertList, vhostName)
-	this.manager.HostPolicy = autocert.HostWhitelist(this.autoCertList...)
+// AddAutoCertificate registers a virtual host to obtain an automatic Let's encrypt certificate
+func (certManager *CertManager) AddAutoCertificate(vhostName string) {
+	certManager.autoCertList = append(certManager.autoCertList, vhostName)
+	certManager.manager.HostPolicy = autocert.HostWhitelist(certManager.autoCertList...)
 }
 
-func (this *CertManager) AddClientCA(authorizedCA []string) {
-	this.clientCAs = append(this.clientCAs, authorizedCA...)
+// AddClientCA registers a list of certificate authorities to use with the reverse proxy
+func (certManager *CertManager) AddClientCA(authorizedCA []string) {
+	certManager.clientCAs = append(certManager.clientCAs, authorizedCA...)
 }
 
-func (this *CertManager) GetTlsConfig() *tls.Config {
+// GetTlsConfig gets the config structure to configure a TSL server
+func (certManager *CertManager) GetTlsConfig() *tls.Config {
 	ret := &tls.Config{
-		GetCertificate: this.GetCertificate,
+		GetCertificate: certManager.certificateGetter,
 		NextProtos: []string{
 			"h2", "http/1.1", // enable HTTP/2
 			acme.ALPNProto, // enable tls-alpn ACME challenges
 		},
 	}
 	ret.ClientAuth = tls.VerifyClientCertIfGiven
-	ret.ClientCAs = getCertPool(this.clientCAs...)
+	ret.ClientCAs = getCertPool(certManager.clientCAs...)
 	return ret
 }
 
-func (this *CertManager) GetCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	if this.certificates[hello.ServerName] == nil {
-		return this.manager.GetCertificate(hello)
+func (certManager *CertManager) certificateGetter(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	if certManager.certificates[hello.ServerName] == nil {
+		return certManager.manager.GetCertificate(hello)
 	}
-	return this.certificates[hello.ServerName], nil
+	return certManager.certificates[hello.ServerName], nil
 }
