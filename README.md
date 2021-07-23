@@ -1,5 +1,5 @@
 # Go ReverseProxy SSL
-[![Go Report Card](https://goreportcard.com/badge/github.com/janmbaco/go-reverseproxy-ssl)](https://goreportcard.com/report/github.com/janmbaco/go-reverseproxy-ssl)
+[![Go Report Card](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat)](https://goreportcard.com/report/github.com/janmbaco/go-reverseproxy-ssl)
 
 **Go ReverseProxy SSL** was born with the objective of establishing a secure and identified communication between a client and a web service. Its main target is that there be always a secure transport (TLS) between the client and server. For that, you need to configure the services you want to give access to.
 
