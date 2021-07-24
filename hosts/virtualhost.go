@@ -121,13 +121,13 @@ func (virtualHost *VirtualHost) getPath(virtualPath string) string {
 
 func (virtualHost *VirtualHost) redirectRequest(outReq *http.Request, req *http.Request) {
 	outReq.URL.Scheme = virtualHost.Scheme
-	outReq.URL.Host = virtualHost.HostName + ":" + strconv.Itoa(int(virtualHost.Port))
+	outReq.URL.Host = virtualHost.getHost()
 	outReq.URL.Path = virtualHost.getPath(req.URL.Path)
 	outReq.URL.RawQuery = req.URL.RawQuery
 	outReq.Header = req.Header
 	outReq.Header.Set("X-Forwarded-Proto", "https")
 
-	logs.Log.Info(fmt.Sprintf("from '%v%v%v' to '%v%v%v'", req.URL.Host, req.URL.Path, req.URL.RawQuery, outReq.URL.Host, outReq.URL.Path, outReq.URL.RawPath))
+	logs.Log.Info(fmt.Sprintf("from '%v%v%v' to '%v%v/%v'", req.URL.Host, req.URL.Path, req.URL.RawQuery, outReq.URL.Host, outReq.URL.Path, outReq.URL.RawPath))
 }
 
 func (virtualHost *VirtualHost) getHost() string {
