@@ -43,7 +43,7 @@ func (virtualHost *VirtualHost) SetUrlToReplace(url string) {
 		virtualHost.urlToReplace += "/"
 	}
 	paths := strings.SplitAfterN(url, "/", 2)
-	virtualHost.hostToReplace = paths[0]
+	virtualHost.hostToReplace = strings.ReplaceAll(paths[0], "/", "")
 	if len(paths) == 2 && len(paths[1]) > 0 {
 		var b strings.Builder
 		b.WriteString("/")
