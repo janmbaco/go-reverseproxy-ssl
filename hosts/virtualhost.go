@@ -106,7 +106,8 @@ func (virtualHost *VirtualHost) serve(rw http.ResponseWriter, req *http.Request,
 
 func (virtualHost *VirtualHost) getPath(virtualPath string) string {
 	var b strings.Builder
-	if len(virtualHost.Path) > 0 {
+	b.WriteString(strings.Replace(virtualPath, virtualHost.pathToDelete, "", 1))
+	if len(b.String()) > 0 {
 		if !strings.HasPrefix(virtualHost.Path, "/") {
 			b.WriteString("/")
 		}
@@ -115,7 +116,6 @@ func (virtualHost *VirtualHost) getPath(virtualPath string) string {
 			b.WriteString("/")
 		}
 	}
-	b.WriteString(strings.Replace(virtualPath, virtualHost.pathToDelete, "", 1))
 	return strings.ReplaceAll(b.String(), "//", "/")
 }
 
@@ -127,7 +127,7 @@ func (virtualHost *VirtualHost) redirectRequest(outReq *http.Request, req *http.
 	outReq.Header = req.Header
 	outReq.Header.Set("X-Forwarded-Proto", "https")
 
-	logs.Log.Info(fmt.Sprintf("from '%v%v%v' to '%v/%v%v'", req.URL.Host, req.URL.Path, req.URL.RawQuery, outReq.URL.Host, outReq.URL.Path, outReq.URL.RawQuery))
+	logs.Log.Info(fmt.Sprintf("from '%v%v%v' to '%v%v%v'", req.URL.Host, req.URL.Path, req.URL.RawQuery, outReq.URL.Host, outReq.URL.Path, outReq.URL.RawQuery))
 }
 
 func (virtualHost *VirtualHost) getHost() string {
