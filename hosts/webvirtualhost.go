@@ -24,7 +24,7 @@ func (webVirtualHost *WebVirtualHost) ServeHTTP(rw http.ResponseWriter, req *htt
 	}
 
 	webVirtualHost.serve(rw, req, func(outReq *http.Request) {
-		webVirtualHost.redirectRequest(outReq, req)
+		webVirtualHost.redirectRequest(outReq, req, true)
 		if webVirtualHost.NeedPkFromClient {
 			pubKey := base64.URLEncoding.EncodeToString(req.TLS.PeerCertificates[0].RawSubjectPublicKeyInfo)
 			outReq.Header.Set("X-Forwarded-PrivateKey", pubKey)

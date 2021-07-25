@@ -18,6 +18,6 @@ func (grpcJsonVirtualHost *GrpcJsonVirtualHost) ServeHTTP(rw http.ResponseWriter
 	_, err := url.Parse(grpcJsonVirtualHost.Scheme + "://" + grpcJsonVirtualHost.HostName + ":" + strconv.Itoa(int(grpcJsonVirtualHost.Port)))
 	errorhandler.TryPanic(err)
 	grpcJsonVirtualHost.serve(rw, req, func(outReq *http.Request) {
-		grpcJsonVirtualHost.redirectRequest(outReq, req)
+		grpcJsonVirtualHost.redirectRequest(outReq, req, true)
 	}, grpcutil.NewTransportJson(grpcJsonVirtualHost.ClientCertificate))
 }

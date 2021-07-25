@@ -1,6 +1,8 @@
 package hosts
 
 import (
+	"github.com/janmbaco/copier"
+	"github.com/janmbaco/go-infrastructure/errorhandler"
 	"net/http"
 
 	"github.com/janmbaco/go-reverseproxy-ssl/grpcutil"
@@ -13,5 +15,8 @@ type GrpcWebVirtualHost struct {
 }
 
 func (grpcWebVirtualHost *GrpcWebVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	grpcWebVirtualHost.WrappedGrpcServer(grpcWebVirtualHost.CreateClientConn(grpcWebVirtualHost.ClientCertificate, grpcWebVirtualHost.getHost())).ServeHTTP(rw, req)
+	var outReq http.Request
+	errorhandler.TryPanic(copier.Copy(&outReq, req))
+	grpcWebVirtualHost.redirectRequest(&outReq, req, false)
+	grpcWebVirtualHost.WrappedGrpcServer(grpcWebVirtualHost.CreateClientConn(grpcWebVirtualHost.ClientCertificate, grpcWebVirtualHost.getHost())).ServeHTTP(rw, &outReq)
 }
