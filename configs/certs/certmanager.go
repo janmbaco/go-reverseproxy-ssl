@@ -25,6 +25,14 @@ func (certManager *CertManager) AddCertificate(vhostName string, certificate *tl
 	certManager.certificates[vhostName] = certificate
 }
 
+// HasCertificateFor indicates if already exists a certificate for de vhostname
+func (certManager *CertManager) HasCertificateFor(vhostName string) bool {
+	if _, isContained := certManager.certificates[vhostName]; isContained {
+		return true
+	}
+	return false
+}
+
 // AddAutoCertificate registers a virtual host to obtain an automatic Let's encrypt certificate
 func (certManager *CertManager) AddAutoCertificate(vhostName string) {
 	certManager.autoCertList = append(certManager.autoCertList, vhostName)
@@ -51,6 +59,7 @@ func (certManager *CertManager) GetTlsConfig() *tls.Config {
 }
 
 func (certManager *CertManager) certificateGetter(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+
 	if certManager.certificates[hello.ServerName] == nil {
 		return certManager.manager.GetCertificate(hello)
 	}

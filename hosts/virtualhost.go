@@ -1,7 +1,6 @@
 package hosts
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -14,18 +13,19 @@ import (
 
 // IVirtualHost is the definition of a object that represents a Virtual Host to reverse proxy.
 type IVirtualHost interface {
-	SetUrlToReplace(url string)
+	GetFrom() string
+	SetUrlToReplace()
 	GetHostToReplace() string
 	GetUrlToReplace() string
 	GetUrl() string
 	GetAuthorizedCAs() []string
-	IsAutoCert() bool
-	GetServerCertificate() *tls.Certificate
+	GetServerCertificate() *certs.CertificateDefs
 	ServeHTTP(rw http.ResponseWriter, req *http.Request)
 }
 
 // VirtualHost is used to configure a virtual host.
 type VirtualHost struct {
+	From              string                 `json:"from"`
 	Scheme            string                 `json:"scheme"`
 	HostName          string                 `json:"host_name"`
 	Port              uint                   `json:"port"`
@@ -36,13 +36,18 @@ type VirtualHost struct {
 	hostToReplace     string
 }
 
+// GetFrom obtains the original host
+func (virtualHost *VirtualHost) GetFrom() string {
+	return virtualHost.From
+}
+
 // SetUrlToReplace sets the url that replace to the virtual host.
-func (virtualHost *VirtualHost) SetUrlToReplace(url string) {
-	virtualHost.urlToReplace = url
+func (virtualHost *VirtualHost) SetUrlToReplace() {
+	virtualHost.urlToReplace = virtualHost.From
 	if !strings.HasSuffix(virtualHost.urlToReplace, "/") {
 		virtualHost.urlToReplace += "/"
 	}
-	paths := strings.SplitAfterN(url, "/", 2)
+	paths := strings.SplitAfterN(virtualHost.From, "/", 2)
 	virtualHost.hostToReplace = strings.ReplaceAll(paths[0], "/", "")
 	if len(paths) == 2 && len(paths[1]) > 0 {
 		var b strings.Builder
@@ -70,21 +75,9 @@ func (virtualHost *VirtualHost) GetUrl() string {
 	return fmt.Sprintf("'%v://%v:%v/%v'", virtualHost.Scheme, virtualHost.HostName, virtualHost.Port, virtualHost.Path)
 }
 
-// IsAutoCert indicates if the virtual host is certificated by let's encrypt.
-func (virtualHost *VirtualHost) IsAutoCert() bool {
-	isAutoCert := true
-	if virtualHost.ServerCertificate != nil {
-		if len(virtualHost.ServerCertificate.PublicKey) > 0 && len(virtualHost.ServerCertificate.PrivateKey) > 0 {
-			isAutoCert = false
-		}
-	}
-	return isAutoCert
-}
-
 // GetServerCertificate gets de certificate of the server.
-func (virtualHost *VirtualHost) GetServerCertificate() *tls.Certificate {
-	cert := virtualHost.ServerCertificate.GetCertificate()
-	return &cert
+func (virtualHost *VirtualHost) GetServerCertificate() *certs.CertificateDefs {
+	return virtualHost.ServerCertificate
 }
 
 // GetAuthorizedCAs gets the certificate authorities of the virtual host.
@@ -106,16 +99,14 @@ func (virtualHost *VirtualHost) serve(rw http.ResponseWriter, req *http.Request,
 
 func (virtualHost *VirtualHost) getPath(virtualPath string) string {
 	var b strings.Builder
-	b.WriteString(strings.Replace(virtualPath, virtualHost.pathToDelete, "", 1))
-	if len(b.String()) > 0 {
-		if !strings.HasPrefix(virtualHost.Path, "/") {
-			b.WriteString("/")
-		}
+	b.WriteString("/")
+	if len(virtualHost.Path) > 0 {
 		b.WriteString(virtualHost.Path)
 		if !strings.HasSuffix(virtualHost.Path, "/") {
 			b.WriteString("/")
 		}
 	}
+	b.WriteString(strings.Replace(virtualPath, virtualHost.pathToDelete, "", 1))
 	return strings.ReplaceAll(b.String(), "//", "/")
 }
 
