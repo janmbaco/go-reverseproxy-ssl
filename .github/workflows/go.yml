@@ -17,6 +17,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.16
+      - run: go mod download github.com/desertbit/timer
 
       - name: Build
         run: GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -o build/go-reverseproxy-ssl .
