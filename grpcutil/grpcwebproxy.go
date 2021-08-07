@@ -1,11 +1,9 @@
 package grpcutil
 
 import (
-	"net/http"
-
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"net/http"
 )
 
 // GrpcWebProxy is the object responsible to create a communication  gRPC Web Server that calls other gRPC Server.
@@ -18,42 +16,7 @@ type GrpcWebProxy struct {
 	allowedOriginsFormat *allowedOriginsFormat
 }
 
-// WrappedGrpcServer returns a gRPC Web wrapped server.
-func (grpcWebProxy *GrpcWebProxy) WrappedGrpcServer(clientConn *grpc.ClientConn) *grpcweb.WrappedGrpcServer {
-
-	grpcServer := grpcWebProxy.NewServer(clientConn)
-
-	if grpcWebProxy.AllowedOrigins == nil {
-		grpcWebProxy.AllowedOrigins = make([]string, 0)
-	}
-
-	grpcWebProxy.allowedOriginsFormat = grpcWebProxy.AllowedOrigins.toAllowedOriginsFormat()
-
-	options := []grpcweb.Option{
-		grpcweb.WithCorsForRegisteredEndpointsOnly(false),
-		grpcweb.WithOriginFunc(grpcWebProxy.makeHttpOriginFunc()),
-	}
-
-	if grpcWebProxy.UseWebSockets {
-		options = append(
-			options,
-			grpcweb.WithWebsockets(true),
-			grpcweb.WithWebsocketOriginFunc(grpcWebProxy.getWebsocketOriginFunc()),
-		)
-	}
-
-	if grpcWebProxy.AllowedHeaders != nil && len(grpcWebProxy.AllowedHeaders) > 0 {
-		options = append(
-			options,
-			grpcweb.WithAllowedRequestHeaders(grpcWebProxy.AllowedHeaders),
-		)
-	}
-
-	return grpcweb.WrapServer(grpcServer, options...)
-
-}
-
-func (grpcWebProxy *GrpcWebProxy) makeHttpOriginFunc() func(origin string) bool {
+func (grpcWebProxy *GrpcWebProxy) makeHTTPOriginFunc() func(origin string) bool {
 	if grpcWebProxy.AllowAllOrigins {
 		return func(origin string) bool {
 			return true

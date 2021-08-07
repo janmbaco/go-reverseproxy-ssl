@@ -2,25 +2,25 @@ package hosts
 
 import (
 	"fmt"
+	"github.com/janmbaco/go-infrastructure/logs"
+	"github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
 	"net/http"
 	"net/http/httputil"
 	"strconv"
 	"strings"
-
-	"github.com/janmbaco/go-infrastructure/logs"
-	"github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
 )
 
-// IVirtualHost is the definition of a object that represents a Virtual Host to reverse proxy.
+// IVirtualHost is the definition of an object that represents a Virtual Host to reverse proxy.
 type IVirtualHost interface {
+	http.Handler
 	GetFrom() string
-	SetUrlToReplace()
+	SetURLToReplace()
 	GetHostToReplace() string
-	GetUrlToReplace() string
-	GetUrl() string
+	GetURLToReplace() string
+	GetURL() string
 	GetAuthorizedCAs() []string
 	GetServerCertificate() *certs.CertificateDefs
-	ServeHTTP(rw http.ResponseWriter, req *http.Request)
+	GetHostName() string
 }
 
 // VirtualHost is used to configure a virtual host.
@@ -34,6 +34,7 @@ type VirtualHost struct {
 	urlToReplace      string
 	pathToDelete      string
 	hostToReplace     string
+	logger            logs.Logger
 }
 
 // GetFrom obtains the original host
@@ -41,8 +42,8 @@ func (virtualHost *VirtualHost) GetFrom() string {
 	return virtualHost.From
 }
 
-// SetUrlToReplace sets the url that replace to the virtual host.
-func (virtualHost *VirtualHost) SetUrlToReplace() {
+// SetURLToReplace  sets the url that replace to the virtual host.
+func (virtualHost *VirtualHost) SetURLToReplace() {
 	virtualHost.urlToReplace = virtualHost.From
 	if !strings.HasSuffix(virtualHost.urlToReplace, "/") {
 		virtualHost.urlToReplace += "/"
@@ -65,13 +66,13 @@ func (virtualHost *VirtualHost) GetHostToReplace() string {
 	return virtualHost.hostToReplace
 }
 
-// GetUrlToReplace gets the url to replace by de virtual host.
-func (virtualHost *VirtualHost) GetUrlToReplace() string {
+// GetURLToReplace gets the url to replace by de virtual host.
+func (virtualHost *VirtualHost) GetURLToReplace() string {
 	return virtualHost.urlToReplace
 }
 
-// GetUrl gets the url of the virtual host.
-func (virtualHost *VirtualHost) GetUrl() string {
+// GetURL gets the url of the virtual host.
+func (virtualHost *VirtualHost) GetURL() string {
 	return fmt.Sprintf("'%v://%v:%v/%v'", virtualHost.Scheme, virtualHost.HostName, virtualHost.Port, virtualHost.Path)
 }
 
@@ -84,15 +85,23 @@ func (virtualHost *VirtualHost) GetServerCertificate() *certs.CertificateDefs {
 func (virtualHost *VirtualHost) GetAuthorizedCAs() []string {
 	CAs := make([]string, 0)
 	if virtualHost.ServerCertificate != nil && len(virtualHost.ServerCertificate.CaPem) > 0 {
-		CAs = append(CAs, virtualHost.ServerCertificate.CaPem)
+		CAs = append(CAs, virtualHost.ServerCertificate.CaPem...)
 	}
 	return CAs
+}
+
+func (virtualHost *VirtualHost) GetHostName() string {
+	var b strings.Builder
+	b.WriteString(virtualHost.HostName)
+	b.WriteString(":")
+	b.WriteString(strconv.Itoa(int(virtualHost.Port)))
+	return b.String()
 }
 
 func (virtualHost *VirtualHost) serve(rw http.ResponseWriter, req *http.Request, directorFunc func(outReq *http.Request), transport http.RoundTripper) {
 	(&httputil.ReverseProxy{
 		Director:  directorFunc,
-		ErrorLog:  logs.Log.ErrorLogger,
+		ErrorLog:  virtualHost.logger.GetErrorLogger(),
 		Transport: transport,
 	}).ServeHTTP(rw, req)
 }
@@ -112,20 +121,12 @@ func (virtualHost *VirtualHost) getPath(virtualPath string) string {
 
 func (virtualHost *VirtualHost) redirectRequest(outReq *http.Request, req *http.Request, setXForwaredHeader bool) {
 	outReq.URL.Scheme = virtualHost.Scheme
-	outReq.URL.Host = virtualHost.getHost()
+	outReq.URL.Host = virtualHost.GetHostName()
 	outReq.URL.Path = virtualHost.getPath(req.URL.Path)
 	outReq.URL.RawQuery = req.URL.RawQuery
 	outReq.Header = req.Header
 	if setXForwaredHeader {
 		outReq.Header.Set("X-Forwarded-Proto", "https")
 	}
-	logs.Log.Info(fmt.Sprintf("from '%v%v%v' to '%v%v%v'", req.URL.Host, req.URL.Path, req.URL.RawQuery, outReq.URL.Host, outReq.URL.Path, outReq.URL.RawQuery))
-}
-
-func (virtualHost *VirtualHost) getHost() string {
-	var b strings.Builder
-	b.WriteString(virtualHost.HostName)
-	b.WriteString(":")
-	b.WriteString(strconv.Itoa(int(virtualHost.Port)))
-	return b.String()
+	virtualHost.logger.Info(fmt.Sprintf("from '%v%v%v' to '%v%v%v'", req.URL.Host, req.URL.Path, req.URL.RawQuery, outReq.URL.Host, outReq.URL.Path, outReq.URL.RawQuery))
 }

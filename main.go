@@ -3,20 +3,25 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net/http"
-	"os"
-	"strings"
-
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/janmbaco/go-infrastructure/configuration"
+	"github.com/janmbaco/go-infrastructure/configuration/fileconfig"
+	"github.com/janmbaco/go-infrastructure/dependencyinjection"
+	"github.com/janmbaco/go-infrastructure/errors"
 	"github.com/janmbaco/go-infrastructure/logs"
 	"github.com/janmbaco/go-infrastructure/server"
 	"github.com/janmbaco/go-reverseproxy-ssl/configs"
 	"github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
+	"github.com/janmbaco/go-reverseproxy-ssl/grpcutil"
 	"github.com/janmbaco/go-reverseproxy-ssl/hosts"
+	"github.com/janmbaco/go-reverseproxy-ssl/hosts/resolver"
+	"github.com/janmbaco/go-reverseproxy-ssl/sshutil"
 	"golang.org/x/crypto/acme/autocert"
+	"google.golang.org/grpc"
+	"net/http"
+	"os"
+	"strings"
 )
-
-var globalConfig *configs.Config //nolint:gochecknoglobals
-var virtualHosts []hosts.IVirtualHost
 
 func main() {
 	var configFile = flag.String("config", "", "globalConfig File")
@@ -27,92 +32,138 @@ func main() {
 		return
 	}
 
-	globalConfig = configs.NewConfig(
-		configs.NewConfigHandler(*configFile),
-		"localhost",
-		":443",
-		logs.Trace,
-		logs.Trace,
-		"./logs")
+	container := dependencyinjection.NewContainer()
+	registerFacade(container.Register())
 
-	recollectVirtualHostByConfig(globalConfig)
-	globalConfig.OnModifyingConfigSubscriber(recollectVirtualHostByConfig)
+	listenerBuilder := container.Resolver().Type(
+		new(server.ListenerBuilder),
+		map[string]interface{}{"filePath": *configFile, "defaults": &configs.Config{
+			WebVirtualHosts: []*hosts.WebVirtualHost{
+				{
+					ClientCertificateHost: hosts.ClientCertificateHost{
+						VirtualHost: hosts.VirtualHost{
+							From:     "www.example.com",
+							Scheme:   "http",
+							HostName: "localhost",
+							Port:     8080,
+						},
+					},
+				},
+			},
+			DefaultHost:      "localhost",
+			ReverseProxyPort: ":443",
+			LogConsoleLevel:  logs.Trace,
+			LogFileLevel:     logs.Trace,
+			LogsDir:          "./logger",
+		}},
+	).(server.ListenerBuilder)
+
+	logger := container.Resolver().Type(new(logs.Logger), nil).(logs.Logger)
+	vhCollection := container.Resolver().Type(new(resolver.VirtualHostResolver), nil).(resolver.VirtualHostResolver)
+
+	// start server
+	finish := listenerBuilder.SetBootstrapper(reverseProxy(logger, vhCollection)).GetListener().Start()
 
 	// redirect http to https
-	go func() {
-		server.NewListener(globalConfig, redirectHttpToHttps).Start()
-	}()
-	// start server
-	server.NewListener(globalConfig, reverseProxy).Start()
+	listenerBuilder.SetBootstrapper(redirectHTTPToHTTPS(logger)).GetListener().Start()
+
+	<-finish
 }
 
-func setLogConfiguration() {
-	logs.Log.SetDir(globalConfig.LogsDir)
-	logs.Log.SetConsoleLevel(globalConfig.LogConsoleLevel)
-	logs.Log.SetFileLogLevel(globalConfig.LogFileLevel)
+func registerFacade(register dependencyinjection.Register) {
+	register.AsSingleton(new(logs.Logger), logs.NewLogger, nil)
+	register.Bind(new(logs.ErrorLogger), new(logs.Logger))
+	register.AsSingleton(new(errors.ErrorCatcher), errors.NewErrorCatcher, nil)
+	register.AsSingleton(new(errors.ErrorManager), errors.NewErrorManager, nil)
+	register.Bind(new(errors.ErrorCallbacks), new(errors.ErrorManager))
+	register.AsSingleton(new(errors.ErrorThrower), errors.NewErrorThrower, nil)
+	register.AsSingleton(new(configuration.ConfigHandler), fileconfig.NewFileConfigHandler, map[uint]string{0: "filePath", 1: "defaults"})
+	register.AsSingleton(new(server.ListenerBuilder), server.NewListenerBuilder, nil)
+
+	// register VitualHosts
+	register.AsSingleton(new(resolver.VirtualHostResolver), resolver.NewVirtualHostCollection, nil)
+	register.AsTenant(hosts.WebVirtualHostTenant, new(hosts.IVirtualHost), hosts.WebVirtualHostProvider, map[uint]string{0: "host"})
+	register.AsTenant(hosts.SSHVirtualHostTenant, new(hosts.IVirtualHost), hosts.SSHVirtualHostProvider, map[uint]string{0: "host"})
+	register.AsTenant(hosts.GrpcJSONVirtualHostTenant, new(hosts.IVirtualHost), hosts.GrpcJSONVirtualHostProvider, map[uint]string{0: "host"})
+	register.AsTenant(hosts.GrpcVirtualHostTenant, new(hosts.IVirtualHost), hosts.GrpcVirtualHostProvider, map[uint]string{0: "host"})
+	register.AsTenant(hosts.GrpcWebVirtualHostTenant, new(hosts.IVirtualHost), hosts.GrpcWebVirtualHostProvider, map[uint]string{0: "host"})
+
+	// register sshutil
+	register.AsType(new(sshutil.Proxy), sshutil.NewProxy, nil)
+
+	// register grputil
+	register.AsType(new(grpcutil.TransportJSON), grpcutil.NewTransportJSON, map[uint]string{0: "clientCertificate"})
+	register.AsType(new(*grpc.ClientConn), grpcutil.NewGrpcClientConn, map[uint]string{0: "grpcProxy", 1: "clientCertificate", 2: "hostName"})
+	register.AsType(new(*grpc.Server), grpcutil.NewGrpcServer, map[uint]string{0: "grpcProxy"})
+	register.AsType(new(*grpcweb.WrappedGrpcServer), grpcutil.NewWrappedGrpcServer, map[uint]string{0: "grpcWebProxy"})
 }
 
-func redirectHttpToHttps(serverSetter *server.ServerSetter) {
-
-	logs.Log.Info("Start Redirect Server from http to https")
-	mux := http.NewServeMux()
-	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
-	}))
-	serverSetter.Addr = ":80"
-	serverSetter.Handler = mux
-}
-
-func reverseProxy(serverSetter *server.ServerSetter) {
-
-	setLogConfiguration()
-
-	logs.Log.Info("")
-	logs.Log.Info("Start Server Application")
-	logs.Log.Info("")
-
-	mux := http.NewServeMux()
-
-	certManager := certs.NewCertManager(&autocert.Manager{
-		Prompt: autocert.AcceptTOS,
-		Cache:  autocert.DirCache("./certs"),
-	})
-
-	registerVirtualHost(mux, certManager, virtualHosts)
-
-	logs.Log.Info(fmt.Sprintf("register default host: '%v'", globalConfig.DefaultHost))
-	mux.HandleFunc(globalConfig.DefaultHost+"/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("started..."))
-	})
-
-	if globalConfig.DefaultHost != "localhost" {
-		redirectToWWW(globalConfig.DefaultHost, mux)
+func redirectHTTPToHTTPS(logger logs.Logger) func(interface{}, *server.ServerSetter) {
+	return func(config interface{}, serverSetter *server.ServerSetter) {
+		if serverSetter.IsChecking {
+			logger.SetConsoleLevel(logs.Warning)
+			logger.SetFileLogLevel(logs.Warning)
+		} else {
+			setLogConfiguration(config.(*configs.Config), logger)
+		}
+		logger.Info("")
+		logger.Info("Start Redirect Server from http to https")
+		logger.Info("")
+		mux := http.NewServeMux()
+		mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
+		}))
+		serverSetter.Addr = ":80"
+		serverSetter.Handler = mux
 	}
-
-	serverSetter.Addr = globalConfig.ReverseProxyPort
-	serverSetter.Handler = mux
-	serverSetter.TLSConfig = certManager.GetTlsConfig()
-
 }
 
-func redirectToWWW(hostname string, mux *http.ServeMux) {
+func reverseProxy(logger logs.Logger, vhCollection resolver.VirtualHostResolver) func(config interface{}, serverSetter *server.ServerSetter) {
+	return func(config interface{}, serverSetter *server.ServerSetter) {
+		if serverSetter.IsChecking {
+			logger.SetConsoleLevel(logs.Warning)
+			logger.SetFileLogLevel(logs.Warning)
+		} else {
+			setLogConfiguration(config.(*configs.Config), logger)
+		}
+		vhCollection.Resolve(config.(*configs.Config))
 
-	if strings.HasPrefix(hostname, "www") {
-		// redirect to web host with www.
-		mux.Handle(strings.Replace(hostname, "www.", "", 1),
-			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				http.Redirect(w, r, "https://"+hostname, http.StatusMovedPermanently)
-			}))
+		logger.Info("")
+		logger.Info("Start Server Application")
+		logger.Info("")
+
+		mux := http.NewServeMux()
+
+		certManager := certs.NewCertManager(&autocert.Manager{
+			Prompt: autocert.AcceptTOS,
+			Cache:  autocert.DirCache("./certs"),
+		})
+
+		registerVirtualHost(mux, certManager, vhCollection.VirtualHosts(), logger)
+
+		logger.Info(fmt.Sprintf("register default host: '%v'", config.(*configs.Config).DefaultHost))
+		mux.HandleFunc(config.(*configs.Config).DefaultHost+"/", func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("started..."))
+		})
+
+		if config.(*configs.Config).DefaultHost != "localhost" {
+			redirectToWWW(config.(*configs.Config).DefaultHost, mux)
+		}
+		serverSetter.Addr = config.(*configs.Config).ReverseProxyPort
+		serverSetter.Handler = mux
+		serverSetter.TLSConfig = certManager.GetTLSConfig()
 	}
-
 }
-
-func registerVirtualHost(mux *http.ServeMux, certManager *certs.CertManager, virtualHosts []hosts.IVirtualHost) {
-
+func setLogConfiguration(config *configs.Config, logger logs.Logger) {
+	logger.SetDir(config.LogsDir)
+	logger.SetConsoleLevel(config.LogConsoleLevel)
+	logger.SetFileLogLevel(config.LogFileLevel)
+}
+func registerVirtualHost(mux *http.ServeMux, certManager *certs.CertManager, virtualHosts []hosts.IVirtualHost, logs logs.Logger) {
 	for _, vHost := range virtualHosts {
-		vHost.SetUrlToReplace()
-		urlToReplace := vHost.GetUrlToReplace()
-		logs.Log.Info(fmt.Sprintf("register proxy from: '%v' to %v", vHost.GetFrom(), vHost.GetUrl()))
+		vHost.SetURLToReplace()
+		urlToReplace := vHost.GetURLToReplace()
+		logs.Info(fmt.Sprintf("register proxy from: '%v' to %v", vHost.GetFrom(), vHost.GetURL()))
 		mux.Handle(urlToReplace, vHost)
 		if isRegisterdedCertificate := certManager.HasCertificateFor(vHost.GetHostToReplace()); !isRegisterdedCertificate && vHost.GetServerCertificate() == nil {
 			certManager.AddAutoCertificate(vHost.GetFrom())
@@ -122,44 +173,13 @@ func registerVirtualHost(mux *http.ServeMux, certManager *certs.CertManager, vir
 		certManager.AddClientCA(vHost.GetAuthorizedCAs())
 		redirectToWWW(urlToReplace, mux)
 	}
-
 }
 
-func recollectVirtualHostByConfig(newConfig interface{}) {
-	virtualHostByFrom := make(map[string]hosts.IVirtualHost, 0)
-	certificateByServerName := make(map[string]certs.CertificateDefs, 0)
-	virtualHosts = make([]hosts.IVirtualHost, 0)
-	verifyAndInser := func(host hosts.IVirtualHost) {
-		if _, isContained := virtualHostByFrom[host.GetFrom()]; isContained {
-			panic(fmt.Sprintf("The %v virtual host is duplicate in config file!!", host.GetFrom()))
-		}
-		virtualHostByFrom[host.GetFrom()] = host
-		if _, isContained := certificateByServerName[host.GetHostToReplace()]; isContained {
-			if host.GetServerCertificate() != nil && certificateByServerName[host.GetHostToReplace()] != *host.GetServerCertificate() {
-				panic(fmt.Sprintf("The %v server name should has always the same certificate!!", host.GetHostToReplace()))
-			}
-		} else {
-			certificateByServerName[host.GetHostToReplace()] = *host.GetServerCertificate()
-		}
-		virtualHosts = append(virtualHosts, host)
-	}
-	for _, v := range newConfig.(*configs.Config).WebVirtualHosts {
-		verifyAndInser(v)
-	}
-
-	for _, v := range newConfig.(*configs.Config).SshVirtualHosts {
-		verifyAndInser(v)
-	}
-
-	for _, v := range newConfig.(*configs.Config).GrpcJsonVirtualHosts {
-		verifyAndInser(v)
-	}
-
-	for _, v := range newConfig.(*configs.Config).GrpcWebVirtualHosts {
-		verifyAndInser(v)
-	}
-
-	for _, v := range newConfig.(*configs.Config).GrpcVirtualHosts {
-		verifyAndInser(v)
+func redirectToWWW(hostname string, mux *http.ServeMux) {
+	if strings.HasPrefix(hostname, "www") {
+		mux.Handle(strings.Replace(hostname, "www.", "", 1),
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, "https://"+hostname, http.StatusMovedPermanently)
+			}))
 	}
 }

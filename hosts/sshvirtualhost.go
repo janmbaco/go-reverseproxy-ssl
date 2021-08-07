@@ -1,24 +1,31 @@
 package hosts
 
 import (
+	"github.com/janmbaco/go-infrastructure/errors/errorschecker"
+	"github.com/janmbaco/go-infrastructure/logs"
+	"github.com/janmbaco/go-reverseproxy-ssl/sshutil"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 	"net/http"
 	"strconv"
-
-	"github.com/janmbaco/go-infrastructure/errorhandler"
-	"github.com/janmbaco/go-infrastructure/logs"
-	"github.com/janmbaco/go-reverseproxy-ssl/sshutil"
 )
 
-// SshVirtualHost is used to configure a virtual host with a web client and a ssh server.
-type SshVirtualHost struct {
+const SSHVirtualHostTenant = "SshVirtualHost"
+
+// SSHVirtualHost is used to configure a virtual host with a web client and a ssh server.
+type SSHVirtualHost struct {
 	VirtualHost
 	KnownHosts string `json:"known_hosts"`
+	proxy      sshutil.Proxy
 }
 
-func (sshVirtualHost *SshVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+func SSHVirtualHostProvider(host *SSHVirtualHost, proxy sshutil.Proxy, logger logs.Logger) IVirtualHost {
+	host.proxy = proxy
+	host.logger = logger
+	return host
+}
 
+func (sshVirtualHost *SSHVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodConnect {
 		http.NotFound(rw, req)
 		return
@@ -30,7 +37,7 @@ func (sshVirtualHost *SshVirtualHost) ServeHTTP(rw http.ResponseWriter, req *htt
 		return
 	}
 	hostKeyCallBack, err := knownhosts.New(sshVirtualHost.KnownHosts)
-	errorhandler.TryPanic(err)
+	errorschecker.TryPanic(err)
 	clientConfig := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{
@@ -39,22 +46,18 @@ func (sshVirtualHost *SshVirtualHost) ServeHTTP(rw http.ResponseWriter, req *htt
 		HostKeyCallback: hostKeyCallBack,
 	}
 	clientConn, err := ssh.Dial("tcp", sshVirtualHost.HostName+":"+strconv.Itoa(int(sshVirtualHost.Port)), clientConfig)
-	errorhandler.TryPanic(err)
+	errorschecker.TryPanic(err)
 	defer func() {
-		logs.Log.TryError(clientConn.Close())
+		sshVirtualHost.logger.PrintError(logs.Error, clientConn.Close())
 	}()
 	sshServerConfig := &ssh.ServerConfig{NoClientAuth: true}
-	sshKey, err := ssh.ParsePrivateKey(sshutil.MockSshKey[:])
-	errorhandler.TryPanic(err)
+	sshKey, err := ssh.ParsePrivateKey(sshutil.MockSSHKey[:])
+	errorschecker.TryPanic(err)
 	sshServerConfig.AddHostKey(sshKey)
 	_, err = rw.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
-	logs.Log.TryError(err)
+	sshVirtualHost.logger.PrintError(logs.Error, err)
 	conn, _, err := rw.(http.Hijacker).Hijack()
-	errorhandler.TryPanic(err)
-	proxy := sshutil.Proxy{
-		Conn:   conn,
-		Config: sshServerConfig,
-		Client: clientConn,
-	}
-	proxy.Serve()
+	errorschecker.TryPanic(err)
+	sshVirtualHost.proxy.Initialize(conn, sshServerConfig, clientConn)
+	sshVirtualHost.proxy.Serve()
 }

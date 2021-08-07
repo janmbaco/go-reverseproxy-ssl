@@ -2,8 +2,11 @@ package hosts
 
 import (
 	"encoding/base64"
+	"github.com/janmbaco/go-infrastructure/logs"
 	"net/http"
 )
+
+const WebVirtualHostTenant = "WebVirtualHost"
 
 // WebVirtualHost is used to configure a virtual host by web.
 type WebVirtualHost struct {
@@ -12,15 +15,20 @@ type WebVirtualHost struct {
 	NeedPkFromClient bool              `json:"need_pk_from_client"`
 }
 
+func WebVirtualHostProvider(host *WebVirtualHost, logger logs.Logger) IVirtualHost {
+	host.logger = logger
+	return host
+}
+
 func (webVirtualHost *WebVirtualHost) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if webVirtualHost.NeedPkFromClient && req.TLS.PeerCertificates == nil {
-		http.Error(rw, "Not authorized", 401)
+		http.Error(rw, "Not authorized", http.StatusUnauthorized)
 		return
 	}
 
 	transport := http.DefaultTransport.(*http.Transport)
 	if webVirtualHost.ClientCertificate != nil {
-		transport.TLSClientConfig = webVirtualHost.ClientCertificate.GetTlsConfig()
+		transport.TLSClientConfig = webVirtualHost.ClientCertificate.GetTLSConfig()
 	}
 
 	webVirtualHost.serve(rw, req, func(outReq *http.Request) {

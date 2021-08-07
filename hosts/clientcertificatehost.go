@@ -12,7 +12,7 @@ type ClientCertificateHost struct {
 func (clientCertificateHost *ClientCertificateHost) GetAuthorizedCAs() []string {
 	CAs := clientCertificateHost.VirtualHost.GetAuthorizedCAs()
 	if clientCertificateHost.ClientCertificate != nil && len(clientCertificateHost.ClientCertificate.CaPem) > 0 {
-		CAs = append(CAs, clientCertificateHost.ClientCertificate.CaPem)
+		CAs = append(CAs, clientCertificateHost.ClientCertificate.CaPem...)
 	}
 	return CAs
 }

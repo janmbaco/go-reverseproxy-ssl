@@ -1,19 +1,19 @@
 module github.com/janmbaco/go-reverseproxy-ssl
 
-go 1.14
+go 1.16
 
 require (
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
-	github.com/gogo/protobuf v1.3.1
-	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/improbable-eng/grpc-web v0.13.0
-	github.com/janmbaco/go-infrastructure v0.0.18
-	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a // indirect
+	github.com/gogo/protobuf v1.3.2
+	github.com/improbable-eng/grpc-web v0.14.0
+	github.com/janmbaco/copier v0.0.0
+	github.com/janmbaco/go-infrastructure v1.0.11
+	github.com/jinzhu/copier v0.3.2 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/mwitkow/grpc-proxy v0.0.0-20181017164139-0f1106ef9c76
-	github.com/rs/cors v1.7.0 // indirect
-	github.com/stretchr/testify v1.6.1 // indirect
-	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
-	golang.org/x/net v0.0.0-20200822124328-c89045814202
-	google.golang.org/grpc v1.31.1
+	github.com/rs/cors v1.8.0 // indirect
+	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
+	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
+	google.golang.org/grpc v1.39.1
+	nhooyr.io/websocket v1.8.7 // indirect
 )

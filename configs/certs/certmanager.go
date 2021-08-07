@@ -44,9 +44,10 @@ func (certManager *CertManager) AddClientCA(authorizedCA []string) {
 	certManager.clientCAs = append(certManager.clientCAs, authorizedCA...)
 }
 
-// GetTlsConfig gets the config structure to configure a TSL server
-func (certManager *CertManager) GetTlsConfig() *tls.Config {
+// GetTLSConfig gets the config structure to configure a TSL server
+func (certManager *CertManager) GetTLSConfig() *tls.Config {
 	ret := &tls.Config{
+		MinVersion:     tls.VersionTLS12,
 		GetCertificate: certManager.certificateGetter,
 		NextProtos: []string{
 			"h2", "http/1.1", // enable HTTP/2
@@ -59,7 +60,6 @@ func (certManager *CertManager) GetTlsConfig() *tls.Config {
 }
 
 func (certManager *CertManager) certificateGetter(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-
 	if certManager.certificates[hello.ServerName] == nil {
 		return certManager.manager.GetCertificate(hello)
 	}
