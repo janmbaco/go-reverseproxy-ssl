@@ -1,12 +1,14 @@
 package sshutil
 
 import (
+	"io"
+	"net"
+	"reflect"
+
 	"github.com/janmbaco/go-infrastructure/errors"
 	"github.com/janmbaco/go-infrastructure/errors/errorschecker"
 	"github.com/janmbaco/go-infrastructure/logs"
 	"golang.org/x/crypto/ssh"
-	"io"
-	"net"
 )
 
 type (
@@ -30,8 +32,9 @@ type (
 	}
 )
 
-func NewProxy(thrower errors.ErrorThrower, catcher errors.ErrorCatcher, logs logs.Logger) Proxy {
-	return &proxy{deferer: errors.NewErrorDefer(thrower, &proxyErrorPipe{}), catcher: catcher, logger: logs}
+func NewProxy(errorDefer errors.ErrorDefer, catcher errors.ErrorCatcher, logs logs.Logger) Proxy {
+	errorschecker.CheckNilParameter(map[string]interface{}{"errorDefer": errorDefer, "catcher":catcher, "logs":logs})
+	return &proxy{deferer: errorDefer, catcher: catcher, logger: logs}
 }
 
 func (p *proxy) Initialize(conn net.Conn, config *ssh.ServerConfig, client *ssh.Client) {
@@ -47,9 +50,9 @@ var MockSSHKey = [...]byte{45, 45, 45, 45, 45, 66, 69, 71, 73, 78, 32, 79, 80, 6
 
 // Serve starts a communication loop between client and server.
 func (p *proxy) Serve() { //nolint:funlen
-	defer p.deferer.TryThrowError()
+	defer p.deferer.TryThrowError(p.pipeError)
 	if !p.initialized {
-		panic(newProxyError(NotInitializedError, "the ssh proxy is not initialized"))
+		panic(newProxyError(NotInitializedError, "the ssh proxy is not initialized", nil))
 	}
 	serverConn, serverChan, reqChan, err := ssh.NewServerConn(p.conn, p.config)
 	errorschecker.TryPanic(err)
@@ -107,4 +110,14 @@ func (p *proxy) Serve() { //nolint:funlen
 			p.logger.TryError(p.client.Close())
 			p.logger.TryError(p.conn.Close())
 		})
+}
+
+func (p *proxy) pipeError(err error) error {
+	resultError := err
+
+	if errType := reflect.Indirect(reflect.ValueOf(err)).Type(); !errType.Implements(reflect.TypeOf((*proxyError)(nil)).Elem()) {
+		resultError = newProxyError(UnexpectedError, err.Error(), err)
+	}
+
+	return resultError
 }

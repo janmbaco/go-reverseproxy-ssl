@@ -14,3 +14,4 @@
 go.mod
 go.sum
 /certs
+/config.json
