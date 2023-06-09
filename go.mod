@@ -1,16 +1,14 @@
 module github.com/janmbaco/go-reverseproxy-ssl
 
-go 1.16
+go 1.20
 
 require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/janmbaco/copier v0.0.0
 	github.com/janmbaco/go-infrastructure v1.2.2
-	github.com/mwitkow/grpc-proxy v0.0.0-20220126150247-db34e7bfee32
-	github.com/rs/cors v1.8.2 // indirect
-	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
-	golang.org/x/net v0.0.0-20220412020605-290c469a71a5
-	google.golang.org/grpc v1.45.0
-	nhooyr.io/websocket v1.8.7 // indirect
+	github.com/mwitkow/grpc-proxy v0.0.0-20230212185441-f345521cb9c9
+	golang.org/x/crypto v0.9.0
+	golang.org/x/net v0.10.0
+	google.golang.org/grpc v1.55.0
 )
