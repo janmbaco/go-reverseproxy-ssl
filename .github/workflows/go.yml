@@ -8,6 +8,12 @@ on:
 
 jobs:
   build:
+    env:
+      GOPATH: ${{ github.workspace }}
+      GOBIN: ${{ github.workspace }}/bin
+    defaults:
+      run:
+        working-directory: ${{ env.GOPATH }}/go-reverseproxy-ssl
     environment: DOCKER_HUB
     runs-on: ubuntu-latest
     steps:
