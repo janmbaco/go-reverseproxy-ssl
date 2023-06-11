@@ -1,6 +1,4 @@
-FROM alpine
-
-RUN apk update && apk upgrade openssl
+FROM ubuntu:rolling
 
 WORKDIR /app
 

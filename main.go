@@ -10,10 +10,10 @@ import (
 	"github.com/janmbaco/go-infrastructure/errors/errorschecker"
 	"github.com/janmbaco/go-infrastructure/logs"
 	"github.com/janmbaco/go-infrastructure/server"
-	"github.com/janmbaco/go-reverseproxy-ssl/configs"
-	"github.com/janmbaco/go-reverseproxy-ssl/configs/certs"
-	"github.com/janmbaco/go-reverseproxy-ssl/hosts"
-	"github.com/janmbaco/go-reverseproxy-ssl/hosts/ioc/auto_resolve"
+	"github.com/janmbaco/go-reverseproxy-ssl/src/configs"
+	"github.com/janmbaco/go-reverseproxy-ssl/src/configs/certs"
+	"github.com/janmbaco/go-reverseproxy-ssl/src/hosts"
+	"github.com/janmbaco/go-reverseproxy-ssl/src/hosts/ioc/autoresolve"
 	"golang.org/x/crypto/acme/autocert"
 
 	fileConfigResolver "github.com/janmbaco/go-infrastructure/configuration/fileconfig/ioc/resolver"
@@ -32,7 +32,7 @@ func main() {
 
 	listenerBuilder := serverResolver.GetListenerBuilder(
 		fileConfigResolver.GetFileConfigHandler(
-			*configFile,  
+			*configFile,
 			&configs.Config{
 				WebVirtualHosts: []*hosts.WebVirtualHost{
 					{
@@ -53,7 +53,7 @@ func main() {
 				LogsDir:          "./logger",
 			},
 		),
-	) 
+	)
 
 	// start server
 	finish := listenerBuilder.SetBootstrapper(reverseProxy).GetListener().Start()
@@ -91,7 +91,7 @@ func reverseProxy(config interface{}, serverSetter *server.ServerSetter) {
 	} else {
 		setLogConfiguration(config.(*configs.Config), logger)
 	}
-	vhCollection := auto_resolve.GetVirtualHostResolver().Resolve(config.(*configs.Config))
+	vhCollection := autoresolve.GetVirtualHostResolver().Resolve(config.(*configs.Config))
 
 	logger.Info("")
 	logger.Info("Start Server Application")
