@@ -1,7 +1,5 @@
 FROM ubuntu:rolling
 
-RUN apk update && apk upgrade openssl
-
 WORKDIR /app
 
 COPY build/go-reverseproxy-ssl .
