@@ -1,4 +1,4 @@
-FROM alpine
+FROM ubuntu:rolling
 
 RUN apk update && apk upgrade openssl
 

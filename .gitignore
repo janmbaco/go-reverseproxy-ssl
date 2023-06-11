@@ -16,3 +16,8 @@ go.sum
 /certs
 /config.json
 *.log
+/codeql-agent-results
+/test
+.vscode
+.idea
+build
