@@ -8,8 +8,8 @@ require (
 	github.com/janmbaco/copier v1.0.0
 	github.com/janmbaco/go-infrastructure v1.2.5
 	github.com/mwitkow/grpc-proxy v0.0.0-20230212185441-f345521cb9c9
-	golang.org/x/crypto v0.35.0
-	golang.org/x/net v0.36.0
+	golang.org/x/crypto v0.36.0
+	golang.org/x/net v0.38.0
 	google.golang.org/grpc v1.56.3
 )
 
@@ -20,8 +20,8 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/klauspost/compress v1.11.7 // indirect
 	github.com/rs/cors v1.7.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	nhooyr.io/websocket v1.8.6 // indirect
