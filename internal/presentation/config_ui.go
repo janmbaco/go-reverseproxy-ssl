@@ -416,8 +416,7 @@ func (cui *ConfigUI) createVirtualHost(w http.ResponseWriter, r *http.Request) {
 	cui.logger.Info(fmt.Sprintf("Creating virtual host: from=%s, scheme=%s, host=%s, port=%d", from, scheme, hostName, port))
 
 	// Create cert directory based on 'from' (sanitize for filesystem)
-	safeName := strings.ReplaceAll(from, "/", "-")
-	safeName = strings.ReplaceAll(safeName, ":", "-")
+	safeName := sanitizePathName(from)
 	certDir := filepath.Join(certBaseDir, safeName)
 
 	if err := os.MkdirAll(certDir, 0755); err != nil {
@@ -608,8 +607,7 @@ func (cui *ConfigUI) updateVirtualHost(w http.ResponseWriter, r *http.Request, i
 	}
 
 	// Create cert directory based on 'from' (sanitize for filesystem)
-	safeName := strings.ReplaceAll(from, "/", "-")
-	safeName = strings.ReplaceAll(safeName, ":", "-")
+	safeName := sanitizePathName(from)
 	certDir := filepath.Join(certBaseDir, safeName)
 
 	if err := os.MkdirAll(certDir, 0755); err != nil {
@@ -915,8 +913,7 @@ func (cui *ConfigUI) cleanupCertDirectory(config *domain.Config, deletedFrom str
 	if certBaseDir == "" {
 		certBaseDir = "/app/certs"
 	}
-	safeName := strings.ReplaceAll(deletedFrom, "/", "-")
-	safeName = strings.ReplaceAll(safeName, ":", "-")
+	safeName := sanitizePathName(deletedFrom)
 	certDir := filepath.Join(certBaseDir, safeName)
 
 	cui.logger.Info(fmt.Sprintf("Checking certificate directory: %s", certDir))
@@ -930,6 +927,55 @@ func (cui *ConfigUI) cleanupCertDirectory(config *domain.Config, deletedFrom str
 			cui.logger.Info(fmt.Sprintf("Directory %s still contains files, keeping it", certDir))
 		}
 	}
+}
+
+// sanitizePathName sanitizes a path name to prevent directory traversal attacks
+// It extracts the domain/host part from URLs and sanitizes dangerous characters
+func sanitizePathName(name string) string {
+	// If name contains a URL-like format, extract just the host/domain part
+	if strings.Contains(name, "://") {
+		// Parse as URL to extract host
+		if parts := strings.Split(name, "://"); len(parts) > 1 {
+			hostAndPath := parts[1]
+			// Take everything before the first '/' (path separator)
+			if hostEnd := strings.Index(hostAndPath, "/"); hostEnd > 0 {
+				name = hostAndPath[:hostEnd]
+			} else {
+				name = hostAndPath
+			}
+		}
+	} else if strings.Contains(name, "/") {
+		// If no protocol but has path, take only the domain part
+		if hostEnd := strings.Index(name, "/"); hostEnd > 0 {
+			name = name[:hostEnd]
+		}
+	}
+
+	// Replace dangerous characters
+	safeName := strings.ReplaceAll(name, "/", "-")
+	safeName = strings.ReplaceAll(safeName, ":", "-")
+	safeName = strings.ReplaceAll(safeName, "\\", "-")
+	safeName = strings.ReplaceAll(safeName, "..", "-")
+	safeName = strings.ReplaceAll(safeName, "<", "-")
+	safeName = strings.ReplaceAll(safeName, ">", "-")
+	safeName = strings.ReplaceAll(safeName, "|", "-")
+	safeName = strings.ReplaceAll(safeName, "?", "-")
+	safeName = strings.ReplaceAll(safeName, "*", "-")
+	safeName = strings.ReplaceAll(safeName, "\"", "-")
+	safeName = strings.ReplaceAll(safeName, "'", "-")
+
+	// Remove any remaining dangerous sequences
+	safeName = strings.ReplaceAll(safeName, "..", "")
+
+	// Ensure it's not empty and doesn't start/end with dangerous chars
+	safeName = strings.Trim(safeName, ".- ")
+
+	// If empty after sanitization, use a default
+	if safeName == "" {
+		safeName = "default"
+	}
+
+	return safeName
 }
 
 func (cui *ConfigUI) Start(port string) {
