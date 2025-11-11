@@ -26,6 +26,19 @@
 
     <form id="virtualhostForm" class="form-container">
         <div class="form-section">
+            <h2><i class="fas fa-cogs"></i> Virtual Host Type</h2>
+
+            <div class="form-group">
+                <label for="virtualHostType">Type</label>
+                <select id="virtualHostType" name="virtualHostType" required {{if .IsEdit}}disabled{{end}}>
+                    <option value="web" {{if eq .VirtualHostType "web"}}selected{{end}}>Web (HTTP/HTTPS)</option>
+                    <option value="grpc-web" {{if eq .VirtualHostType "grpc-web"}}selected{{end}}>gRPC-Web</option>
+                </select>
+                <small>{{if .IsEdit}}Virtual host type cannot be changed after creation{{else}}Select the type of virtual host to configure{{end}}</small>
+            </div>
+        </div>
+
+        <div class="form-section">
             <h2><i class="fas fa-info-circle"></i> Basic Configuration</h2>
 
             <div class="form-group">
@@ -35,33 +48,107 @@
                 <small>The domain name that clients will use to access this virtual host</small>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="scheme">Scheme</label>
-                    <select id="scheme" name="scheme" required>
-                        <option value="http" {{if eq .VirtualHost.Scheme "http"}}selected{{end}}>HTTP</option>
-                        <option value="https" {{if eq .VirtualHost.Scheme "https"}}selected{{end}}>HTTPS</option>
-                    </select>
+            <!-- Web Virtual Host Fields -->
+            <div id="webFields" class="virtualhost-type-fields {{if ne .VirtualHostType "web"}}hidden{{end}}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="scheme">Scheme</label>
+                        <select id="scheme" name="scheme" required>
+                            <option value="http" {{if eq .VirtualHost.Scheme "http"}}selected{{end}}>HTTP</option>
+                            <option value="https" {{if eq .VirtualHost.Scheme "https"}}selected{{end}}>HTTPS</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="hostName">Host Name</label>
+                        <input type="text" id="hostName" name="hostName" value="{{.VirtualHost.HostName}}" required
+                               placeholder="localhost">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="port">Port</label>
+                        <input type="number" id="port" name="port" value="{{.VirtualHost.Port}}" required
+                               placeholder="8080">
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="hostName">Host Name</label>
-                    <input type="text" id="hostName" name="hostName" value="{{.VirtualHost.HostName}}" required
-                           placeholder="localhost">
-                </div>
-
-                <div class="form-group">
-                    <label for="port">Port</label>
-                    <input type="number" id="port" name="port" value="{{.VirtualHost.Port}}" required
-                           placeholder="8080">
+                    <label for="path">Path (Optional)</label>
+                    <input type="text" id="path" name="path" value="{{.VirtualHost.Path}}"
+                           placeholder="/api">
+                    <small>Optional path prefix for routing</small>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="path">Path (Optional)</label>
-                <input type="text" id="path" name="path" value="{{.VirtualHost.Path}}"
-                       placeholder="/api">
-                <small>Optional path prefix for routing</small>
+            <!-- gRPC-Web Virtual Host Fields -->
+            <div id="grpcWebFields" class="virtualhost-type-fields {{if ne .VirtualHostType "grpc-web"}}hidden{{end}}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="grpcHostName">Host Name</label>
+                        <input type="text" id="grpcHostName" name="grpcHostName" value="{{if .GrpcWebVirtualHost}}{{.GrpcWebVirtualHost.HostName}}{{end}}" required
+                               placeholder="grpc-server">
+                        <small>The hostname of the gRPC server</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="grpcPort">Port</label>
+                        <input type="number" id="grpcPort" name="grpcPort" value="{{if .GrpcWebVirtualHost}}{{.GrpcWebVirtualHost.Port}}{{end}}" required
+                               placeholder="7656">
+                        <small>The port of the gRPC server</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="authority">Authority</label>
+                    <input type="text" id="authority" name="authority" value="{{if .GrpcWebVirtualHost}}{{.GrpcWebVirtualHost.GrpcWebProxy.Authority}}{{end}}"
+                           placeholder="grpc-server:7656">
+                    <small>The authority header to use for gRPC requests</small>
+                </div>
+
+                <div class="form-group">
+                    <label>gRPC Services & Methods</label>
+                    <div id="grpcServicesContainer">
+                        {{if .GrpcWebVirtualHost}}
+                        {{range $service, $methods := .GrpcWebVirtualHost.GrpcWebProxy.GrpcServices}}
+                        <div class="grpc-service-item">
+                            <div class="service-header">
+                                <input type="text" name="grpcServiceName[]" value="{{$service}}" placeholder="service.Name" required>
+                                <button type="button" class="btn btn-small btn-danger remove-service">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            <div class="methods-container">
+                                {{range $methods}}
+                                <div class="method-item">
+                                    <input type="text" name="grpcMethods[]" value="{{.}}" placeholder="MethodName" required>
+                                    <input type="hidden" name="grpcServiceName[]" value="{{$service}}">
+                                    <button type="button" class="btn btn-small btn-danger remove-method">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                {{end}}
+                                <button type="button" class="btn btn-small btn-secondary add-method">
+                                    <i class="fas fa-plus"></i> Add Method
+                                </button>
+                            </div>
+                        </div>
+                        {{end}}
+                        {{end}}
+                    </div>
+                    <button type="button" id="addGrpcService" class="btn btn-secondary">
+                        <i class="fas fa-plus"></i> Add gRPC Service
+                    </button>
+                    <small>Define which gRPC services and methods should be exposed via gRPC-Web</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="isTransparentServer" name="isTransparentServer"
+                               {{if .GrpcWebVirtualHost}}{{if .GrpcWebVirtualHost.GrpcWebProxy.IsTransparentServer}}checked{{end}}{{end}}>
+                        Transparent Server
+                    </label>
+                    <small>When enabled, the gRPC server acts as a transparent proxy</small>
+                </div>
             </div>
         </div>
 
@@ -168,6 +255,69 @@
                     {{end}}
                     <input type="file" id="clientCertFile" name="clientCertFile" accept=".pem,.crt,.cer" style="display: none;">
                 </div>
+            </div>
+        </div>
+
+        <!-- gRPC-Web Specific Configuration -->
+        <div id="grpcWebConfigSection" class="form-section {{if ne .VirtualHostType "grpc-web"}}hidden{{end}}">
+            <h2><i class="fas fa-network-wired"></i> gRPC-Web Configuration</h2>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="allowAllOrigins" name="allowAllOrigins"
+                           {{if .GrpcWebVirtualHost}}{{if .GrpcWebVirtualHost.GrpcWebProxy.AllowAllOrigins}}checked{{end}}{{end}}>
+                    Allow all origins
+                </label>
+                <small>When enabled, allows requests from any origin (not recommended for production)</small>
+            </div>
+
+            <div id="allowedOriginsGroup" class="form-group {{if .GrpcWebVirtualHost}}{{if .GrpcWebVirtualHost.GrpcWebProxy.AllowAllOrigins}}hidden{{end}}{{end}}">
+                <label for="allowedOrigins">Allowed Origins</label>
+                <div id="allowedOriginsContainer">
+                    {{if .GrpcWebVirtualHost}}
+                    {{range .GrpcWebVirtualHost.GrpcWebProxy.AllowedOrigins}}
+                    <div class="origin-item">
+                        <input type="text" name="allowedOrigins[]" value="{{.}}" placeholder="https://example.com" required>
+                        <button type="button" class="btn btn-small btn-danger remove-origin">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    {{end}}
+                    {{end}}
+                </div>
+                <button type="button" id="addAllowedOrigin" class="btn btn-secondary">
+                    <i class="fas fa-plus"></i> Add Origin
+                </button>
+                <small>Specify allowed origins for CORS (leave empty to allow all when "Allow all origins" is checked)</small>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="useWebSockets" name="useWebSockets"
+                           {{if .GrpcWebVirtualHost}}{{if .GrpcWebVirtualHost.GrpcWebProxy.UseWebSockets}}checked{{end}}{{end}}>
+                    Use WebSockets
+                </label>
+                <small>Enable WebSocket support for bidirectional streaming</small>
+            </div>
+
+            <div class="form-group">
+                <label for="allowedHeaders">Allowed Headers</label>
+                <div id="allowedHeadersContainer">
+                    {{if .GrpcWebVirtualHost}}
+                    {{range .GrpcWebVirtualHost.GrpcWebProxy.AllowedHeaders}}
+                    <div class="header-item">
+                        <input type="text" name="allowedHeaders[]" value="{{.}}" placeholder="x-custom-header" required>
+                        <button type="button" class="btn btn-small btn-danger remove-header">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    {{end}}
+                    {{end}}
+                </div>
+                <button type="button" id="addAllowedHeader" class="btn btn-secondary">
+                    <i class="fas fa-plus"></i> Add Header
+                </button>
+                <small>Specify additional allowed headers for CORS requests</small>
             </div>
         </div>
 
@@ -384,6 +534,238 @@ function showMessage(message, type) {
     setTimeout(() => {
         if (msgDiv.parentElement) msgDiv.remove();
     }, 5000);
+}
+
+// Virtual Host Type Management
+document.getElementById('virtualHostType').addEventListener('change', function() {
+    const selectedType = this.value;
+    const currentType = '{{.VirtualHostType}}';
+
+    // If changing type and it's an edit operation, show warning
+    if ('{{.IsEdit}}' === 'true' && selectedType !== currentType) {
+        const confirmed = confirm('Changing the virtual host type will require recreating the virtual host with new configuration. All current settings will be lost. Do you want to continue?');
+        if (!confirmed) {
+            // Reset to original type
+            this.value = currentType;
+            return;
+        }
+    }
+
+    const webFields = document.getElementById('webFields');
+    const grpcWebFields = document.getElementById('grpcWebFields');
+    const grpcWebConfigSection = document.getElementById('grpcWebConfigSection');
+
+    if (selectedType === 'web') {
+        webFields.classList.remove('hidden');
+        grpcWebFields.classList.add('hidden');
+        grpcWebConfigSection.classList.add('hidden');
+        
+        // Set required attributes for web fields
+        document.getElementById('scheme').required = true;
+        document.getElementById('hostName').required = true;
+        document.getElementById('port').required = true;
+        
+        // Remove required attributes for gRPC fields
+        document.getElementById('grpcHostName').required = false;
+        document.getElementById('grpcPort').required = false;
+        
+    } else if (selectedType === 'grpc-web') {
+        webFields.classList.add('hidden');
+        grpcWebFields.classList.remove('hidden');
+        grpcWebConfigSection.classList.remove('hidden');
+        
+        // Set required attributes for gRPC fields
+        document.getElementById('grpcHostName').required = true;
+        document.getElementById('grpcPort').required = true;
+        
+        // Remove required attributes for web fields
+        document.getElementById('scheme').required = false;
+        document.getElementById('hostName').required = false;
+        document.getElementById('port').required = false;
+    }
+});
+
+// gRPC Services Management
+document.getElementById('addGrpcService').addEventListener('click', function() {
+    addGrpcService();
+});
+
+function addGrpcService(serviceName = '', methods = ['']) {
+    const container = document.getElementById('grpcServicesContainer');
+    const serviceDiv = document.createElement('div');
+    serviceDiv.className = 'grpc-service-item';
+    serviceDiv.innerHTML = `
+        <div class="service-header">
+            <input type="text" name="grpcServiceName[]" value="${serviceName}" placeholder="service.Name" required>
+            <button type="button" class="btn btn-small btn-danger remove-service">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+        <div class="methods-container" id="methods-${Date.now()}">
+            ${methods.map(method => `
+                <div class="method-item">
+                    <input type="text" name="grpcMethods[]" value="${method}" placeholder="MethodName" required>
+                    <input type="hidden" name="grpcServiceName[]" value="${serviceName}">
+                    <button type="button" class="btn btn-small btn-danger remove-method">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `).join('')}
+            <button type="button" class="btn btn-small btn-secondary add-method">
+                <i class="fas fa-plus"></i> Add Method
+            </button>
+        </div>
+    `;
+    container.appendChild(serviceDiv);
+
+    // Add event listeners for the new service
+    serviceDiv.querySelector('.remove-service').addEventListener('click', function() {
+        serviceDiv.remove();
+    });
+
+    serviceDiv.querySelector('.add-method').addEventListener('click', function() {
+        addGrpcMethod(serviceDiv.querySelector('.methods-container'));
+    });
+
+    // Add event listeners for existing methods
+    serviceDiv.querySelectorAll('.remove-method').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.method-item').remove();
+        });
+    });
+}
+
+function addGrpcMethod(container, methodName = '') {
+    // Get the service name from the parent service item
+    const serviceItem = container.closest('.grpc-service-item');
+    const serviceNameInput = serviceItem.querySelector('input[name="grpcServiceName[]"]');
+    const serviceName = serviceNameInput ? serviceNameInput.value : '';
+
+    const methodDiv = document.createElement('div');
+    methodDiv.className = 'method-item';
+    methodDiv.innerHTML = `
+        <input type="text" name="grpcMethods[]" value="${methodName}" placeholder="MethodName" required>
+        <input type="hidden" name="grpcServiceName[]" value="${serviceName}">
+        <button type="button" class="btn btn-small btn-danger remove-method">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.insertBefore(methodDiv, container.querySelector('.add-method'));
+
+    methodDiv.querySelector('.remove-method').addEventListener('click', function() {
+        methodDiv.remove();
+    });
+
+    // Update all hidden service name inputs when service name changes
+    serviceNameInput.addEventListener('input', function() {
+        const newServiceName = this.value;
+        container.querySelectorAll('input[type="hidden"][name="grpcServiceName[]"]').forEach(hidden => {
+            hidden.value = newServiceName;
+        });
+    });
+}
+
+// Allowed Origins Management
+document.getElementById('allowAllOrigins').addEventListener('change', function() {
+    document.getElementById('allowedOriginsGroup').classList.toggle('hidden', this.checked);
+});
+
+document.getElementById('addAllowedOrigin').addEventListener('click', function() {
+    addAllowedOrigin();
+});
+
+function addAllowedOrigin(origin = '') {
+    const container = document.getElementById('allowedOriginsContainer');
+    const originDiv = document.createElement('div');
+    originDiv.className = 'origin-item';
+    originDiv.innerHTML = `
+        <input type="text" name="allowedOrigins[]" value="${origin}" placeholder="https://example.com" required>
+        <button type="button" class="btn btn-small btn-danger remove-origin">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.appendChild(originDiv);
+
+    originDiv.querySelector('.remove-origin').addEventListener('click', function() {
+        originDiv.remove();
+    });
+}
+
+// Allowed Headers Management
+document.getElementById('addAllowedHeader').addEventListener('click', function() {
+    addAllowedHeader();
+});
+
+function addAllowedHeader(header = '') {
+    const container = document.getElementById('allowedHeadersContainer');
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'header-item';
+    headerDiv.innerHTML = `
+        <input type="text" name="allowedHeaders[]" value="${header}" placeholder="x-custom-header" required>
+        <button type="button" class="btn btn-small btn-danger remove-header">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.appendChild(headerDiv);
+
+    headerDiv.querySelector('.remove-header').addEventListener('click', function() {
+        headerDiv.remove();
+    });
+}
+
+// Initialize existing items with event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize required attributes based on current virtual host type
+    initializeRequiredAttributes();
+    
+    // Add event listeners for existing remove buttons
+    document.querySelectorAll('.remove-service').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.grpc-service-item').remove();
+        });
+    });
+
+    document.querySelectorAll('.add-method').forEach(btn => {
+        btn.addEventListener('click', function() {
+            addGrpcMethod(this.closest('.methods-container'));
+        });
+    });
+
+    document.querySelectorAll('.remove-method').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.method-item').remove();
+        });
+    });
+
+    document.querySelectorAll('.remove-origin').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.origin-item').remove();
+        });
+    });
+
+    document.querySelectorAll('.remove-header').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.header-item').remove();
+        });
+    });
+});
+
+function initializeRequiredAttributes() {
+    const selectedType = document.getElementById('virtualHostType').value;
+    
+    if (selectedType === 'web') {
+        document.getElementById('scheme').required = true;
+        document.getElementById('hostName').required = true;
+        document.getElementById('port').required = true;
+        document.getElementById('grpcHostName').required = false;
+        document.getElementById('grpcPort').required = false;
+    } else if (selectedType === 'grpc-web') {
+        document.getElementById('scheme').required = false;
+        document.getElementById('hostName').required = false;
+        document.getElementById('port').required = false;
+        document.getElementById('grpcHostName').required = true;
+        document.getElementById('grpcPort').required = true;
+    }
 }
 </script>
 {{end}}

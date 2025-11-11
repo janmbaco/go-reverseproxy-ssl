@@ -4,7 +4,7 @@ import (
 	"flag"
 	"os"
 
-	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/application/startup"
 )
 
 func main() {
@@ -17,11 +17,12 @@ func main() {
 		return
 	}
 
-	bootstrapper := infrastructure.NewServerBootstrapper(*configFile)
+	bootstrapper := NewServerBootstrapper()
+	defaultConfig := bootstrapper.CreateDefaultConfig()
 
 	if *validateOnly {
-		// Only validate configuration
-		if err := bootstrapper.ValidateConfig(); err != nil {
+		validator := startup.NewConfigValidator()
+		if err := validator.Validate(*configFile, defaultConfig); err != nil {
 			_, _ = os.Stderr.WriteString("Configuration validation failed: " + err.Error() + "\n")
 			os.Exit(1)
 		}
@@ -29,5 +30,10 @@ func main() {
 		return
 	}
 
-	bootstrapper.Start()
+	container := bootstrapper.BuildContainer()
+
+	validator := startup.NewConfigValidator()
+	runner := startup.NewApplicationRunner(*configFile, defaultConfig, validator.ValidateRuntime)
+
+	runner.Start(container)
 }

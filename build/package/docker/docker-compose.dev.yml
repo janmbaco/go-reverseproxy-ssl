@@ -1,13 +1,14 @@
 services:
   reverseproxy-debug:
     build:
-      context: ../..
-      dockerfile: go-reverseproxy-ssl/docker/Dockerfile.dev
+      context: ../../../..
+      dockerfile: go-reverseproxy-ssl/build/package/docker/Dockerfile.dev
     container_name: go-reverseproxy-ssl-debug
     restart: unless-stopped
     ports:
       - "80:80"    # HTTP en puerto alternativo
       - "443:443"   # HTTPS en puerto alternativo
+      - "8081:8081" # Config UI
       - "40000:40000" # Puerto de debug
     volumes:
       - ./config.local-test.json:/app/config/config.json
@@ -35,10 +36,8 @@ services:
     image: janmbaco/singlepageapp:latest
     container_name: s00
     restart: unless-stopped
-    ports:
-      - "8080:8080"
     volumes:
-      - ../integration/testdata/dashboard:/app/static:ro
+      - ../../../integration/testdata/dashboard:/app/static:ro
     networks:
       - proxy-network
     command: ["-port", ":8080", "-static", "/app/static", "-index", "index.html"]
@@ -52,10 +51,8 @@ services:
     image: janmbaco/singlepageapp:latest
     container_name: s01
     restart: unless-stopped
-    ports:
-      - "8081:8081"
     volumes:
-      - ../integration/testdata/prueba-1:/app/static:ro
+      - ../../../integration/testdata/prueba-1:/app/static:ro
     networks:
       - proxy-network
     command: ["-port", ":8081", "-static", "/app/static", "-index", "index.html"]
@@ -69,10 +66,8 @@ services:
     image: janmbaco/singlepageapp:latest
     container_name: s02
     restart: unless-stopped
-    ports:
-      - "8082:8082"
     volumes:
-      - ../integration/testdata/prueba-2:/app/static:ro
+      - ../../../integration/testdata/prueba-2:/app/static:ro
     networks:
       - proxy-network
     command: ["-port", ":8082", "-static", "/app/static", "-index", "index.html"]
@@ -86,10 +81,8 @@ services:
     image: janmbaco/singlepageapp:latest
     container_name: s03
     restart: unless-stopped
-    ports:
-      - "8083:8083"
     volumes:
-      - ../integration/testdata/prueba-3:/app/static:ro
+      - ../../../integration/testdata/prueba-3:/app/static:ro
     networks:
       - proxy-network
     command: ["-port", ":8083", "-static", "/app/static", "-index", "index.html"]
@@ -105,8 +98,6 @@ services:
       dockerfile: Dockerfile
     container_name: grpc0
     restart: unless-stopped
-    ports:
-      - "7656:7656"
     networks:
       - proxy-network
     healthcheck:

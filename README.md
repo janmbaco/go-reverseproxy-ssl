@@ -1,6 +1,6 @@
 # Go ReverseProxy SSL
 
-[![Go Report Card](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat)](https://goreportcard.com/report/github.com/janmbaco/go-reverseproxy-ssl)
+[![Go Report Card](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat)](https://goreportcard.com/report/github.com/janmbaco/go-reverseproxy-ssl/v3)
 [![Go Version](https://img.shields.io/badge/go-1.25+-blue.svg)](https://golang.org/dl/)
 [![License](https://img.shields.io/badge/license-GPL%20v3.0-green.svg)](LICENSE)
 [![Release](https://img.shields.io/badge/release-v3.0.0-blue.svg)](https://github.com/janmbaco/go-reverseproxy-ssl/releases/tag/v3.0.0)
@@ -840,13 +840,24 @@ Integration tests require Docker and test end-to-end functionality with real HTT
 ./scripts/run-integration-tests.sh
 ```
 
+**Config UI specific tests:**
+
+```bash
+# Windows (PowerShell) - Config UI only
+.\scripts\run-config-ui-integration-tests.ps1
+
+# Linux/macOS (Bash) - Config UI only
+./scripts/run-config-ui-integration-tests.sh
+```
+
 The script automatically:
 1. Generates temporary self-signed certificates using `alpine/openssl`
 2. Builds the Docker image from `build/package/Dockerfile`
 3. Starts all services with Docker Compose (`docker-compose.test.yml`)
 4. Waits for reverse proxy to be ready (health check on port 443)
-5. Runs integration tests with verbose output
-6. Cleans up all containers and temporary certificates
+5. Waits for config UI to be ready (health check on port 8081)
+6. Runs integration tests with verbose output
+7. Cleans up all containers and temporary certificates
 
 **What gets tested:**
 - ✅ HTTP-to-HTTPS reverse proxy with multiple backends
@@ -854,9 +865,12 @@ The script automatically:
 - ✅ TLS certificate loading and permissions
 - ✅ Docker networking between services
 - ✅ Virtual host routing by domain
+- ✅ **Config UI HTML pages and API endpoints**
+- ✅ **Virtual host CRUD operations via API**
+- ✅ **Certificate upload functionality**
 
 **Test services (Docker Compose):**
-- `reverse-proxy` - Main application under test
+- `reverse-proxy` - Main application under test (ports 443 + 8081 for config UI)
 - `backend-8080` through `backend-8083` - Nginx backends for web virtual hosts
 - `grpc-backend` - gRPC server for gRPC-Web tests
 
@@ -890,6 +904,7 @@ docker-compose -f docker-compose.test.yml down
 
 - **Unit Tests**: 60+ tests covering all business logic
 - **Integration Tests**: End-to-end HTTP/HTTPS/gRPC-Web proxy testing
+- **Config UI Tests**: Complete web interface and API testing
 - **Certificate Tests**: TLS certificate loading, permissions, and validation
 - **CI Coverage**: Automated testing with GitHub Actions
 

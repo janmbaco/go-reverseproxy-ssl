@@ -1,6 +1,7 @@
 package grpcutil
 
 import (
+	"net/http/httptest"
 	"testing"
 
 	certs "github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/certificates"
@@ -95,4 +96,81 @@ func TestNewGrpcClientConn_WhenNoCertificate_ThenUsesInsecure(t *testing.T) {
 	// It returns a connection that will fail on first use
 	assert.NoError(t, err)
 	assert.NotNil(t, conn)
+}
+
+func TestGrpcWebProxy_makeHTTPOriginFunc_WhenNotAllowAllOrigins_ThenReturnsSelectiveFunc(t *testing.T) {
+	// Arrange
+	proxy := &GrpcWebProxy{
+		AllowAllOrigins: false,
+		AllowedOrigins:  AllowedOrigins{"example.com"},
+	}
+	proxy.allowedOriginsFormat = proxy.AllowedOrigins.toAllowedOriginsFormat()
+
+	// Act
+	fn := proxy.makeHTTPOriginFunc()
+
+	// Assert
+	assert.True(t, fn("example.com"))
+	assert.False(t, fn("other.com"))
+}
+
+func TestGrpcWebProxy_getWebsocketOriginFunc_WhenAllowAllOrigins_ThenReturnsAllowingFunc(t *testing.T) {
+	// Arrange
+	proxy := &GrpcWebProxy{
+		AllowAllOrigins: true,
+	}
+
+	// Act
+	fn := proxy.getWebsocketOriginFunc()
+
+	// Assert
+	req := httptest.NewRequest("GET", "/test", nil)
+	assert.True(t, fn(req))
+}
+
+func TestGrpcWebProxy_getWebsocketOriginFunc_WhenNotAllowAllOrigins_ThenReturnsSelectiveFunc(t *testing.T) {
+	// Arrange
+	proxy := &GrpcWebProxy{
+		AllowAllOrigins: false,
+		AllowedOrigins:  AllowedOrigins{"example.com"},
+	}
+	proxy.allowedOriginsFormat = proxy.AllowedOrigins.toAllowedOriginsFormat()
+
+	// Act
+	fn := proxy.getWebsocketOriginFunc()
+
+	// Assert
+	req := httptest.NewRequest("GET", "/test", nil)
+	// Since WebsocketRequestOrigin returns empty string, and empty string is not in allowed origins
+	assert.False(t, fn(req))
+}
+
+func TestAllowedOriginsFormat_getWebsocketOriginFunc_WhenCalled_ThenReturnsFunc(t *testing.T) {
+	// Arrange
+	format := &allowedOriginsFormat{
+		origins: map[string]struct{}{
+			"example.com": {},
+		},
+	}
+
+	// Act
+	fn := format.getWebsocketOriginFunc()
+
+	// Assert
+	req := httptest.NewRequest("GET", "/test", nil)
+	// Since WebsocketRequestOrigin returns empty string, it should return false
+	assert.False(t, fn(req))
+}
+
+func TestAllowedOriginsFormat_IsAllowed_WhenOriginAllowed_ThenReturnsTrue(t *testing.T) {
+	// Arrange
+	format := &allowedOriginsFormat{
+		origins: map[string]struct{}{
+			"example.com": {},
+		},
+	}
+
+	// Act & Assert
+	assert.True(t, format.IsAllowed("example.com"))
+	assert.False(t, format.IsAllowed("other.com"))
 }

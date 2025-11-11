@@ -21,8 +21,8 @@ RUN sed -i 's|replace github.com/janmbaco/go-infrastructure/ => ../go-infrastruc
 # Copiar el resto del código fuente del proyecto
 COPY go-reverseproxy-ssl ./go-reverseproxy-ssl/
 
-# Cambiar al directorio del proyecto
-WORKDIR /build/go-reverseproxy-ssl
+# Cambiar al directorio del proyecto donde está main.go
+WORKDIR /build/go-reverseproxy-ssl/cmd/reverseproxy
 
 # Descargar y verificar dependencias
 RUN go mod download && \
@@ -57,7 +57,7 @@ RUN addgroup -g 1000 reverseproxy && \
 WORKDIR /app
 
 # Copiar binario compilado y Delve
-COPY --from=builder /build/go-reverseproxy-ssl .
+COPY --from=builder /build/go-reverseproxy-ssl/cmd/reverseproxy/go-reverseproxy-ssl .
 COPY --from=builder /go/bin/dlv /usr/local/bin/dlv
 
 # Crear directorios necesarios

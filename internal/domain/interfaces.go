@@ -58,6 +58,7 @@ type VirtualHostResolver interface {
 // HTTPRedirector interface for managing HTTP to HTTPS redirects
 type HTTPRedirector interface {
 	UpdateRedirectRules(hosts []IVirtualHost)
+	Start() error
 }
 
 // Tenants for virtual hosts

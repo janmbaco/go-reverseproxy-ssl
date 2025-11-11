@@ -39,52 +39,18 @@ func (c *Config) Validate() error {
 	domains := make(map[string]bool)
 
 	// Validate WebVirtualHosts
-	for i, host := range c.WebVirtualHosts {
-		if err := c.validateVirtualHostBase(&host.VirtualHostBase, i, "web_virtual_hosts"); err != nil {
-			return err
-		}
-
-		// Validate scheme for web hosts
-		if host.Scheme != "http" && host.Scheme != "https" {
-			return errors.New("web_virtual_hosts[" + strconv.Itoa(i) + "]: scheme must be 'http' or 'https'")
-		}
-
-		// Check domain uniqueness
-		if domains[host.From] {
-			return errors.New("web_virtual_hosts[" + strconv.Itoa(i) + "]: domain '" + host.From + "' is already used by another virtual host")
-		}
-		domains[host.From] = true
+	if err := c.validateWebVirtualHosts(domains); err != nil {
+		return err
 	}
 
 	// Validate GrpcWebVirtualHosts
-	for i, host := range c.GrpcWebVirtualHosts {
-		if err := c.validateVirtualHostBase(&host.VirtualHostBase, i, "grpc_web_virtual_hosts"); err != nil {
-			return err
-		}
-
-		// Validate scheme for grpc-web hosts
-		if host.Scheme != "http" && host.Scheme != "https" {
-			return errors.New("grpc_web_virtual_hosts[" + strconv.Itoa(i) + "]: scheme must be 'http' or 'https'")
-		}
-
-		// Validate required grpc_web_proxy field
-		if host.GrpcWebProxy == nil {
-			return errors.New("grpc_web_virtual_hosts[" + strconv.Itoa(i) + "]: 'grpc_web_proxy' field is required")
-		}
-
-		// Check domain uniqueness
-		if domains[host.From] {
-			return errors.New("grpc_web_virtual_hosts[" + strconv.Itoa(i) + "]: domain '" + host.From + "' is already used by another virtual host")
-		}
-		domains[host.From] = true
+	if err := c.validateGrpcWebVirtualHosts(domains); err != nil {
+		return err
 	}
 
 	// Validate log levels
-	if c.LogConsoleLevel < 0 || c.LogConsoleLevel > 5 {
-		return errors.New("log_console_level must be between 0 and 5")
-	}
-	if c.LogFileLevel < 0 || c.LogFileLevel > 5 {
-		return errors.New("log_file_level must be between 0 and 5")
+	if err := c.validateLogLevels(); err != nil {
+		return err
 	}
 
 	return nil
@@ -109,5 +75,62 @@ func (c *Config) validateVirtualHostBase(host *VirtualHostBase, index int, array
 		return errors.New(arrayName + "[" + strconv.Itoa(index) + "]: 'port' field must be between 1 and 65535")
 	}
 
+	return nil
+}
+
+// Helper methods for Validate
+
+func (c *Config) validateWebVirtualHosts(domains map[string]bool) error {
+	for i, host := range c.WebVirtualHosts {
+		if err := c.validateVirtualHostBase(&host.VirtualHostBase, i, "web_virtual_hosts"); err != nil {
+			return err
+		}
+
+		// Validate scheme for web hosts
+		if host.Scheme != "http" && host.Scheme != "https" {
+			return errors.New("web_virtual_hosts[" + strconv.Itoa(i) + "]: scheme must be 'http' or 'https'")
+		}
+
+		// Check domain uniqueness
+		if domains[host.From] {
+			return errors.New("web_virtual_hosts[" + strconv.Itoa(i) + "]: domain '" + host.From + "' is already used by another virtual host")
+		}
+		domains[host.From] = true
+	}
+	return nil
+}
+
+func (c *Config) validateGrpcWebVirtualHosts(domains map[string]bool) error {
+	for i, host := range c.GrpcWebVirtualHosts {
+		if err := c.validateVirtualHostBase(&host.VirtualHostBase, i, "grpc_web_virtual_hosts"); err != nil {
+			return err
+		}
+
+		// Validate scheme for grpc-web hosts
+		if host.Scheme != "http" && host.Scheme != "https" {
+			return errors.New("grpc_web_virtual_hosts[" + strconv.Itoa(i) + "]: scheme must be 'http' or 'https'")
+		}
+
+		// Validate required grpc_web_proxy field
+		if host.GrpcWebProxy == nil {
+			return errors.New("grpc_web_virtual_hosts[" + strconv.Itoa(i) + "]: 'grpc_web_proxy' field is required")
+		}
+
+		// Check domain uniqueness
+		if domains[host.From] {
+			return errors.New("grpc_web_virtual_hosts[" + strconv.Itoa(i) + "]: domain '" + host.From + "' is already used by another virtual host")
+		}
+		domains[host.From] = true
+	}
+	return nil
+}
+
+func (c *Config) validateLogLevels() error {
+	if c.LogConsoleLevel < 0 || c.LogConsoleLevel > 5 {
+		return errors.New("log_console_level must be between 0 and 5")
+	}
+	if c.LogFileLevel < 0 || c.LogFileLevel > 5 {
+		return errors.New("log_file_level must be between 0 and 5")
+	}
 	return nil
 }
