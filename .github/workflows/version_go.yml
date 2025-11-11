@@ -22,7 +22,7 @@ jobs:
         run: go mod download
 
       - name: Build
-        run: GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -o build/go-reverseproxy-ssl .
+        run: GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -o build/go-reverseproxy-ssl ./cmd/reverseproxy
 
       - name: Test
         run: go test -v ./...
