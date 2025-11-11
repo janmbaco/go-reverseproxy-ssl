@@ -1,0 +1,42 @@
+# Git
+.git
+.github
+.gitignore
+
+# Documentación
+README.md
+LICENSE
+*.md
+
+# Archivos de configuración local
+config.json
+*.json
+
+# Logs y certificados locales
+logs/
+certs/
+*.log
+
+# Builds locales
+build/
+bin/
+*.exe
+
+# Test artifacts
+integration/testdata/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

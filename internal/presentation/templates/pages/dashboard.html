@@ -1,0 +1,198 @@
+{{define "dashboard-content"}}
+<div class="dashboard">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="hero-section">
+            <h1><i class="fas fa-server"></i> Go ReverseProxy SSL</h1>
+            <p class="subtitle">Lightweight, production-ready reverse proxy with automatic HTTPS/TLS encryption</p>
+            <div class="badges">
+                <span class="badge badge-go"><i class="fab fa-golang"></i> Go 1.23</span>
+                <span class="badge badge-docker"><i class="fab fa-docker"></i> Docker</span>
+                <span class="badge badge-letsencrypt"><i class="fas fa-shield-alt"></i> Let's Encrypt</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="features-section">
+        <h2><i class="fas fa-star"></i> Features</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h3>Automatic HTTPS</h3>
+                <p>Zero-config SSL/TLS with Let's Encrypt certificates</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-exchange-alt"></i>
+                </div>
+                <h3>HTTP → HTTPS Redirect</h3>
+                <p>Automatic redirection for secure connections</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-network-wired"></i>
+                </div>
+                <h3>Multi-protocol</h3>
+                <p>REST API, gRPC, gRPC-Web, SSH tunneling support</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-certificate"></i>
+                </div>
+                <h3>Client Certificates</h3>
+                <p>Optional mTLS authentication</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-feather"></i>
+                </div>
+                <h3>Lightweight</h3>
+                <p>~15MB Alpine-based Docker image</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h3>Zero-downtime</h3>
+                <p>Automatic certificate renewal</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Architecture Section -->
+    <div class="architecture-section">
+        <h2><i class="fas fa-sitemap"></i> Architecture</h2>
+        <div class="architecture-diagram">
+            <div class="diagram-container">
+                <div class="client-box">
+                    <i class="fas fa-globe"></i>
+                    <span>Client Browser</span>
+                </div>
+                <div class="arrow">HTTPS/TLS</div>
+                <div class="proxy-box">
+                    <i class="fas fa-server"></i>
+                    <span>Go ReverseProxy SSL</span>
+                    <small>Ports 80, 443</small>
+                </div>
+                <div class="arrow">HTTP</div>
+                <div class="backend-box">
+                    <i class="fas fa-cogs"></i>
+                    <span>Backend Services</span>
+                    <small>8080, 8081, etc.</small>
+                </div>
+            </div>
+        </div>
+        <p class="architecture-desc">
+            The proxy acts as an HTTPS termination point, handling all SSL/TLS encryption while communicating with backend services over HTTP or HTTPS as configured.
+        </p>
+    </div>
+
+    <!-- Current Configuration Section -->
+    <div class="config-section">
+        <h2><i class="fas fa-cogs"></i> Current Configuration</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-globe"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{len .VirtualHosts}}</h3>
+                    <p>Virtual Hosts</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-server"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{.Config.ReverseProxyPort}}</h3>
+                    <p>Server Port</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{if .Config.DefaultServerCert}}Custom{{else}}Auto (Let's Encrypt){{end}}</h3>
+                    <p>SSL/TLS Mode</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-list-ol"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{.Config.LogConsoleLevel}}</h3>
+                    <p>Log Level</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Certificates Section -->
+    <div class="certificates-section">
+        <h2><i class="fas fa-certificate"></i> SSL Certificates</h2>
+        <div class="cert-info">
+            <div class="cert-card">
+                <h3>Automatic Certificates (Recommended)</h3>
+                <p>Certificates are automatically requested and renewed from Let's Encrypt when:</p>
+                <ul>
+                    <li>DNS points to your server</li>
+                    <li>Ports 80/443 are accessible</li>
+                    <li>Domain is specified in virtual host configuration</li>
+                </ul>
+                <p><strong>Note:</strong> If no custom certificate is specified, Let's Encrypt will be used automatically.</p>
+            </div>
+        </div>
+    </div>
+
+    {{if .IsLocalhost}}
+    <!-- Localhost Notice -->
+    <div class="localhost-notice">
+        <h2><i class="fas fa-info-circle"></i> Development Environment</h2>
+        <div class="notice-content">
+            <div class="notice-card">
+                <h3>This is a Development/Test Environment</h3>
+                <p>You are currently accessing the reverse proxy configuration interface from a local development environment. This setup is intended for:</p>
+                <ul>
+                    <li><strong>Testing and development</strong> of reverse proxy configurations</li>
+                    <li><strong>Learning</strong> how the Go ReverseProxy SSL works</li>
+                    <li><strong>Experimenting</strong> with different virtual host setups</li>
+                </ul>
+
+                <h4>For Production Deployment:</h4>
+                <ol>
+                    <li><strong>Configure DNS:</strong> Point your domain(s) to your production server</li>
+                    <li><strong>Deploy with Docker:</strong> Use the provided Docker Compose configuration</li>
+                    <li><strong>Enable HTTPS:</strong> Let's Encrypt will automatically provision certificates</li>
+                    <li><strong>Configure Virtual Hosts:</strong> Add your backend services through the web interface</li>
+                    <li><strong>Secure Access:</strong> Restrict access to the configuration interface in production</li>
+                </ol>
+
+                <div class="production-commands">
+                    <h4>Quick Production Setup:</h4>
+                    <pre><code># 1. Clone and configure
+git clone https://github.com/janmbaco/go-reverseproxy-ssl.git
+cd go-reverseproxy-ssl
+
+# 2. Create config
+nano config/config.json
+
+# 3. Deploy with Docker
+docker run -d \
+  --name reverseproxy \
+  -p 80:80 -p 443:443 \
+  -v $(pwd)/config:/app/config:ro \
+  -v reverseproxy-certs:/app/certs \
+  janmbaco/go-reverseproxy-ssl:latest</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{end}}
+</div>
+{{end}}

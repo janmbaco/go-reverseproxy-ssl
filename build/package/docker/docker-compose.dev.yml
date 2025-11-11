@@ -1,0 +1,130 @@
+services:
+  reverseproxy-debug:
+    build:
+      context: ../..
+      dockerfile: go-reverseproxy-ssl/docker/Dockerfile.dev
+    container_name: go-reverseproxy-ssl-debug
+    restart: unless-stopped
+    ports:
+      - "80:80"    # HTTP en puerto alternativo
+      - "443:443"   # HTTPS en puerto alternativo
+      - "40000:40000" # Puerto de debug
+    volumes:
+      - ./config.local-test.json:/app/config/config.json
+      - reverseproxy-logs:/app/logs
+    environment:
+      - TZ=Europe/Madrid
+    depends_on:
+      - test-web-dashboard
+      - test-web-1
+      - test-web-2
+      - test-web-3
+      - grpc0
+    networks:
+      - proxy-network
+    entrypoint: ["./go-reverseproxy-ssl"]
+    command: ["-config", "/app/config/config.json"]
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  test-web-dashboard:
+    image: janmbaco/singlepageapp:latest
+    container_name: s00
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../integration/testdata/dashboard:/app/static:ro
+    networks:
+      - proxy-network
+    command: ["-port", ":8080", "-static", "/app/static", "-index", "index.html"]
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  test-web-1:
+    image: janmbaco/singlepageapp:latest
+    container_name: s01
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    volumes:
+      - ../integration/testdata/prueba-1:/app/static:ro
+    networks:
+      - proxy-network
+    command: ["-port", ":8081", "-static", "/app/static", "-index", "index.html"]
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  test-web-2:
+    image: janmbaco/singlepageapp:latest
+    container_name: s02
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    volumes:
+      - ../integration/testdata/prueba-2:/app/static:ro
+    networks:
+      - proxy-network
+    command: ["-port", ":8082", "-static", "/app/static", "-index", "index.html"]
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  test-web-3:
+    image: janmbaco/singlepageapp:latest
+    container_name: s03
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    volumes:
+      - ../integration/testdata/prueba-3:/app/static:ro
+    networks:
+      - proxy-network
+    command: ["-port", ":8083", "-static", "/app/static", "-index", "index.html"]
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8083/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  grpc0:
+    build:
+      context: ./grpc-server
+      dockerfile: Dockerfile
+    container_name: grpc0
+    restart: unless-stopped
+    ports:
+      - "7656:7656"
+    networks:
+      - proxy-network
+    healthcheck:
+      test: ["CMD", "grpc-health-probe", "-addr=localhost:7656"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  reverseproxy-logs:
+    driver: local
+  reverseproxy-certs:
+    driver: local
+  config-server-logs:
+    driver: local
+  configui-logs:
+    driver: local
+
+networks:
+  proxy-network:
+    driver: bridge

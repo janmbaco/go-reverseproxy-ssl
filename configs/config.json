@@ -1,0 +1,21 @@
+{
+  "web_virtual_hosts": [
+    {
+      "from": "example.com",
+      "scheme": "http",
+      "host_name": "localhost",
+      "port": 8080
+    }
+  ],
+  "grpc_virtual_hosts": [],
+  "grpc_json_virtual_hosts": [],
+  "grpc_web_virtual_hosts": [],
+  "ssh_virtual_hosts": [],
+  "default_host": "localhost",
+  "reverse_proxy_port": ":8443",
+  "default_server_cert": "",
+  "default_server_key": "",
+  "log_console_level": "info",
+  "log_file_level": "info",
+  "logs_dir": "./logs"
+}

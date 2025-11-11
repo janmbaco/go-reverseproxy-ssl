@@ -1,0 +1,112 @@
+version: "3.9"
+
+# Quick Start Docker Compose for Go ReverseProxy SSL
+# This example shows how to deploy the reverse proxy with automatic HTTPS
+
+services:
+  # Reverse Proxy with automatic HTTPS (Let's Encrypt)
+  reverseproxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.quickstart
+    container_name: go-reverseproxy-ssl
+    restart: unless-stopped
+    
+    ports:
+      - "80:80"       # HTTP (redirects to HTTPS)
+      - "443:443"     # HTTPS
+      - "8081:8081"   # Web Configuration UI
+    
+    environment:
+      # Quick Start: Configure via environment variables
+      # The proxy will auto-generate config.json from these values
+      DOMAIN: example.com                  # Your domain
+      BACKEND_HOST: my-app                 # Backend service name
+      BACKEND_PORT: 3000                   # Backend service port
+      BACKEND_SCHEME: http                 # Backend protocol (http/https)
+      LOG_LEVEL: 4                         # 1=Fatal, 2=Error, 3=Warning, 4=Info, 5=Trace
+      
+      # Optional: Override defaults
+      # CONFIG_UI_PORT: ":8081"
+      # CERT_DIR: "/app/certs"
+      # LOGS_DIR: "/app/logs"
+    
+    volumes:
+      # Option 1: Use environment variables (recommended for simple cases)
+      # Config will be auto-generated in /app/config/config.json
+      
+      # Option 2: Mount custom config.json (for advanced configuration)
+      # Uncomment to use your own config file:
+      # - ./config.json:/app/config/config.json:ro
+      
+      # Persistent volumes for certificates and logs
+      - reverseproxy-certs:/app/certs
+      - reverseproxy-logs:/app/logs
+    
+    networks:
+      - app-network
+    
+    depends_on:
+      - my-app
+
+  # Example: Your web application
+  my-app:
+    image: node:20-alpine
+    container_name: my-app
+    working_dir: /app
+    
+    # Example: Node.js app
+    volumes:
+      - ./example-app:/app
+    command: ["npm", "start"]
+    
+    # Internal network only - DO NOT expose port publicly
+    # The reverse proxy will handle external traffic
+    expose:
+      - "3000"
+    
+    networks:
+      - app-network
+    
+    # Optional: environment variables for your app
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+
+# Example: Multi-service setup (web + api + admin)
+# Uncomment to enable multiple services with subdomains
+#
+#  api:
+#    image: my-api:latest
+#    container_name: api
+#    expose: ["8080"]
+#    networks: [app-network]
+#
+#  admin:
+#    image: my-admin:latest
+#    container_name: admin
+#    expose: ["5000"]
+#    networks: [app-network]
+#
+# Then create a custom config.json:
+# {
+#   "web_virtual_hosts": [
+#     {"from": "www.example.com", "host_name": "my-app", "port": 3000},
+#     {"from": "api.example.com", "host_name": "api", "port": 8080},
+#     {"from": "admin.example.com", "host_name": "admin", "port": 5000}
+#   ],
+#   "default_host": "www.example.com",
+#   "reverse_proxy_port": ":443",
+#   "config_ui_port": ":8081"
+# }
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  reverseproxy-certs:
+    # Let's Encrypt certificates are stored here
+    # IMPORTANT: Keep this volume to preserve certificates across restarts
+  reverseproxy-logs:
+    # Application logs

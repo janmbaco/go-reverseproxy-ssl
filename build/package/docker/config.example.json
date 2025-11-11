@@ -1,0 +1,76 @@
+{
+  "web_virtual_hosts": [
+    {
+      "from": "localhost",
+      "scheme": "http",
+      "host_name": "test-web-dashboard",
+      "port": 8080,
+      "path": "",
+      "server_certificate": {
+        "ca_pems": [],
+        "public_key": "/app/certs/localhost-cert.pem",
+        "private_key": "/app/certs/localhost-key.pem"
+      },
+      "client_certificate": null,
+      "response_headers": null,
+      "need_pk_from_client": false
+    },
+    {
+      "from": "localhost/prueba-1",
+      "scheme": "http",
+      "host_name": "test-web-1",
+      "port": 8081,
+      "path": "",
+      "server_certificate": {
+        "ca_pems": [],
+        "public_key": "/app/certs/localhost-cert.pem",
+        "private_key": "/app/certs/localhost-key.pem"
+      },
+      "client_certificate": null,
+      "response_headers": null,
+      "need_pk_from_client": false
+    },
+    {
+      "from": "localhost/prueba-2",
+      "scheme": "http",
+      "host_name": "test-web-2",
+      "port": 8082,
+      "path": "",
+      "server_certificate": {
+        "ca_pems": [],
+        "public_key": "/app/certs/localhost-cert.pem",
+        "private_key": "/app/certs/localhost-key.pem"
+      },
+      "client_certificate": null,
+      "response_headers": null,
+      "need_pk_from_client": false
+    },
+    {
+      "from": "localhost/prueba-3",
+      "scheme": "http",
+      "host_name": "test-web-3",
+      "port": 8083,
+      "path": "",
+      "server_certificate": {
+        "ca_pems": [],
+        "public_key": "/app/certs/localhost-cert.pem",
+        "private_key": "/app/certs/localhost-key.pem"
+      },
+      "client_certificate": null,
+      "response_headers": null,
+      "need_pk_from_client": false
+    }
+  ],
+  "ssh_virtual_hosts": [],
+  "grpc_virtual_hosts": [],
+  "grpc_json_virtual_hosts": [],
+  "grpc_web_virtual_hosts": [],
+  "default_host": "localhost",
+  "reverse_proxy_port": ":443",
+  "default_server_cert": "/app/certs/localhost-cert.pem",
+  "default_server_key": "/app/certs/localhost-key.pem",
+  "log_console_level": 4,
+  "log_file_level": 4,
+  "logs_dir": "/app/logs",
+  "config_ui_port": ":8081"
+}

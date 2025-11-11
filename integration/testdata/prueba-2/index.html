@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servicio Prueba 2 - Puerto 8082</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 600px;
+        }
+        h1 {
+            color: #f5576c;
+            font-size: 3em;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+        .badge {
+            background: #f5576c;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            display: inline-block;
+            margin: 10px;
+            font-weight: bold;
+        }
+        .info {
+            margin: 30px 0;
+            font-size: 1.2em;
+            color: #555;
+        }
+        .route {
+            background: #f7fafc;
+            padding: 15px;
+            border-left: 4px solid #f5576c;
+            margin: 10px 0;
+            text-align: left;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Servicio Prueba 2</h1>
+        <div class="badge">Puerto Directo: 8082</div>
+        <div class="badge">Ruta Proxy: /prueba-2</div>
+        
+        <div class="info">
+            <p><strong>Acceso directo:</strong> http://localhost:8082</p>
+            <p><strong>Vía Reverse Proxy:</strong> https://localhost/prueba-2</p>
+        </div>
+
+        <div class="route">
+            <strong>🔧 Configuración:</strong><br>
+            Container: prueba-2<br>
+            Puerto interno: 80<br>
+            Puerto expuesto: 8082
+        </div>
+
+        <div class="info" style="margin-top: 40px; font-size: 0.9em; color: #888;">
+            <p>Servido por: <strong>nginx:alpine</strong></p>
+            <p>Proxied por: <strong>go-reverseproxy-ssl</strong></p>
+        </div>
+    </div>
+</body>
+</html>

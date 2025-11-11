@@ -4,20 +4,69 @@
 *.dll
 *.so
 *.dylib
+
 # Test binary, build with `go test -c`
 *.test
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
-/.idea
-/*.tgitconfig
-go.mod
-go.sum
-/certs
-/config.json
+
+# Build artifacts
+bin/
+# Allow build configuration files but ignore build artifacts
+build/**/*.exe
+build/**/*.dll
+build/**/*.so
+build/**/*.dylib
+build/**/*.log
+
+# Logs and certificates (sensitive data)
+certs/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+logs/
 *.log
-/codeql-agent-results
-/test
-.vscode
-.idea
-build
+
+# Configuration files with sensitive data
+config.json
+config.local*.json
+**/config.local*.json
+*.secret.json
+*.secrets.json
+
+# Keep example/template configs only
+!config.example.json
+!config.template.json
+!configs/*.json
+!build/package/docker/config.example.json
+
+# Passwords and secrets
+*.password
+*.passwd
+.env
+.env.local
+.env.*.local
+secrets/
+passwords/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# CodeQL
+codeql-agent-results/
+
+# Go workspace
+go.work
+go.work.sum
+

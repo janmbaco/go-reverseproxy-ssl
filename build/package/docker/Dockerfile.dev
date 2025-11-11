@@ -1,0 +1,99 @@
+# ============================================
+# Dockerfile para DESARROLLO LOCAL
+# Genera certificado autofirmado para localhost
+# ============================================
+FROM golang:1.25-alpine AS builder
+
+WORKDIR /build
+
+# Instalar dependencias de compilación y OpenSSL
+RUN apk add --no-cache git ca-certificates openssl
+
+# Copiar archivos go.mod y go.sum primero para aprovechar cache de Docker
+COPY go-reverseproxy-ssl/go.mod go-reverseproxy-ssl/go.sum ./go-reverseproxy-ssl/
+
+# Copiar go-infrastructure para desarrollo local
+COPY go-infrastructure ./go-infrastructure/
+
+# Modificar go.mod para usar versión local de go-infrastructure
+RUN sed -i 's|replace github.com/janmbaco/go-infrastructure/ => ../go-infrastructure|replace github.com/janmbaco/go-infrastructure/ => ../go-infrastructure|' go-reverseproxy-ssl/go.mod
+
+# Copiar el resto del código fuente del proyecto
+COPY go-reverseproxy-ssl ./go-reverseproxy-ssl/
+
+# Cambiar al directorio del proyecto
+WORKDIR /build/go-reverseproxy-ssl
+
+# Descargar y verificar dependencias
+RUN go mod download && \
+    go mod tidy && \
+    go mod verify
+
+# Instalar Delve para debugging
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+
+# Compilar con optimizaciones pero sin stripping para debugging
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-X main.version=dev-local" \
+    -o go-reverseproxy-ssl \
+    -gcflags="all=-N -l" \
+    .
+
+# ============================================
+# Runtime Stage
+# ============================================
+FROM alpine:latest
+
+LABEL maintainer="janmbaco"
+LABEL description="Go ReverseProxy SSL - Development Mode with Self-Signed Certificate"
+
+# Instalar certificados CA y OpenSSL para generar certs
+RUN apk --no-cache add ca-certificates tzdata openssl
+
+# Crear usuario no-root
+RUN addgroup -g 1000 reverseproxy && \
+    adduser -D -u 1000 -G reverseproxy reverseproxy
+
+WORKDIR /app
+
+# Copiar binario compilado y Delve
+COPY --from=builder /build/go-reverseproxy-ssl .
+COPY --from=builder /go/bin/dlv /usr/local/bin/dlv
+
+# Crear directorios necesarios
+RUN mkdir -p /app/certs /app/logs /app/config
+
+# Generar certificado autofirmado para localhost y test.local (desarrollo)
+RUN openssl req -x509 -newkey rsa:2048 -nodes \
+    -keyout /app/certs/localhost-key.pem \
+    -out /app/certs/localhost-cert.pem \
+    -days 365 \
+    -subj "/C=ES/ST=Development/L=LocalDev/O=Development/CN=localhost" \
+    -addext "subjectAltName=DNS:localhost,DNS:*.localhost,DNS:test.local,DNS:*.test.local,DNS:configui,DNS:prueba-1,DNS:prueba-2,DNS:prueba-3" && \
+    cp /app/certs/localhost-cert.pem /app/certs/configui-cert.pem && \
+    cp /app/certs/localhost-key.pem /app/certs/configui-key.pem && \
+    cp /app/certs/localhost-cert.pem /app/certs/prueba1-cert.pem && \
+    cp /app/certs/localhost-key.pem /app/certs/prueba1-key.pem && \
+    cp /app/certs/localhost-cert.pem /app/certs/prueba2-cert.pem && \
+    cp /app/certs/localhost-key.pem /app/certs/prueba2-key.pem && \
+    cp /app/certs/localhost-cert.pem /app/certs/prueba3-cert.pem && \
+    cp /app/certs/localhost-key.pem /app/certs/prueba3-key.pem && \
+    chown -R reverseproxy:reverseproxy /app
+
+# Cambiar a usuario no-root
+USER reverseproxy
+
+EXPOSE 80 443 40000
+
+# Healthcheck - Verificar puerto HTTP (redirige a HTTPS pero no seguimos redirect)
+# Esto evita errores de certificado en logs
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider --max-redirect=0 http://localhost/ 2>&1 | grep -q '301\|200' || exit 1
+
+# Crear script de entrada para debugging
+RUN echo '#!/bin/sh' > /app/debug-entrypoint.sh && \
+    echo 'exec dlv exec --headless --listen=:40000 --api-version=2 --accept-multiclient ./go-reverseproxy-ssl -- "$@"' >> /app/debug-entrypoint.sh && \
+    chmod +x /app/debug-entrypoint.sh
+
+# ENTRYPOINT para debugging con Delve
+ENTRYPOINT ["/app/debug-entrypoint.sh"]

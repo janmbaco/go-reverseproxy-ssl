@@ -1,0 +1,65 @@
+# Quick Start Dockerfile for Go ReverseProxy SSL
+# This Dockerfile is optimized for easy deployment with automatic config generation
+# For production builds, see Dockerfile
+
+# Build stage
+FROM golang:1.25-alpine AS builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates
+
+# Copy go modules files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s" \
+    -o reverseproxy \
+    .
+
+# Runtime stage
+FROM alpine:3.19
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    && update-ca-certificates
+
+# Create app user
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /build/reverseproxy .
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Create directories for volumes
+RUN mkdir -p /app/certs /app/logs /app/config && \
+    chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose ports
+EXPOSE 80 443 8081
+
+# Volume mount points
+VOLUME ["/app/certs", "/app/logs"]
+
+# Set entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+
+# Default command
+CMD ["--config", "/app/config/config.json"]

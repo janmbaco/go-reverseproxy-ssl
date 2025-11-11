@@ -1,0 +1,177 @@
+{{define "config-content"}}
+<div class="config-view">
+    <div class="config-header">
+        <h1><i class="fas fa-cogs"></i> Configuration</h1>
+        <p class="subtitle">Current reverse proxy configuration (read-only)</p>
+    </div>
+
+    <div class="config-sections">
+        <!-- General Settings -->
+        <div class="config-section">
+            <h2><i class="fas fa-server"></i> General Settings</h2>
+            <div class="config-grid">
+                <div class="config-item">
+                    <label>Reverse Proxy Port:</label>
+                    <span class="config-value">{{.Config.ReverseProxyPort}}</span>
+                </div>
+                <div class="config-item">
+                    <label>Default Host:</label>
+                    <span class="config-value">{{.Config.DefaultHost}}</span>
+                </div>
+                <div class="config-item">
+                    <label>Config UI Port:</label>
+                    <span class="config-value">{{.Config.ConfigUIPort}}</span>
+                </div>
+                <div class="config-item">
+                    <label>Log Console Level:</label>
+                    <span class="config-value">{{.Config.LogConsoleLevel}}</span>
+                </div>
+                <div class="config-item">
+                    <label>Log File Level:</label>
+                    <span class="config-value">{{.Config.LogFileLevel}}</span>
+                </div>
+                <div class="config-item">
+                    <label>Logs Directory:</label>
+                    <span class="config-value">{{.Config.LogsDir}}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SSL Certificates -->
+        <div class="config-section">
+            <h2><i class="fas fa-certificate"></i> SSL Certificates</h2>
+            <div class="config-grid">
+                <div class="config-item">
+                    <label>Default Server Certificate:</label>
+                    <span class="config-value">{{if .Config.DefaultServerCert}}{{.Config.DefaultServerCert}}{{else}}Auto (Let's Encrypt){{end}}</span>
+                </div>
+                <div class="config-item">
+                    <label>Default Server Key:</label>
+                    <span class="config-value">{{if .Config.DefaultServerKey}}{{.Config.DefaultServerKey}}{{else}}Auto (Let's Encrypt){{end}}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Virtual Hosts Summary -->
+        <div class="config-section">
+            <h2><i class="fas fa-network-wired"></i> Virtual Hosts</h2>
+            <div class="config-grid">
+                <div class="config-item">
+                    <label>Web Virtual Hosts:</label>
+                    <span class="config-value">{{len .Config.WebVirtualHosts}}</span>
+                </div>
+                <div class="config-item">
+                    <label>SSH Virtual Hosts:</label>
+                    <span class="config-value">{{len .Config.SSHVirtualHosts}}</span>
+                </div>
+                <div class="config-item">
+                    <label>gRPC Virtual Hosts:</label>
+                    <span class="config-value">{{len .Config.GrpcVirtualHosts}}</span>
+                </div>
+                <div class="config-item">
+                    <label>gRPC JSON Virtual Hosts:</label>
+                    <span class="config-value">{{len .Config.GrpcJSONVirtualHosts}}</span>
+                </div>
+                <div class="config-item">
+                    <label>gRPC Web Virtual Hosts:</label>
+                    <span class="config-value">{{len .Config.GrpcWebVirtualHosts}}</span>
+                </div>
+                <div class="config-item">
+                    <label>Total Virtual Hosts:</label>
+                    <span class="config-value">{{len .Config.WebVirtualHosts}} web, {{len .Config.SSHVirtualHosts}} ssh, {{len .Config.GrpcVirtualHosts}} grpc, {{len .Config.GrpcJSONVirtualHosts}} grpc-json, {{len .Config.GrpcWebVirtualHosts}} grpc-web</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Web Virtual Hosts Details -->
+        {{if .Config.WebVirtualHosts}}
+        <div class="config-section">
+            <h2><i class="fas fa-globe"></i> Web Virtual Hosts Details</h2>
+            <div class="virtual-hosts-list">
+                {{range .Config.WebVirtualHosts}}
+                <div class="virtual-host-card">
+                    <h3>{{.From}}</h3>
+                    <div class="vh-details">
+                        <div class="vh-item">
+                            <label>Scheme:</label>
+                            <span>{{.Scheme}}</span>
+                        </div>
+                        <div class="vh-item">
+                            <label>Host:</label>
+                            <span>{{.HostName}}</span>
+                        </div>
+                        <div class="vh-item">
+                            <label>Port:</label>
+                            <span>{{.Port}}</span>
+                        </div>
+                        {{if .Path}}
+                        <div class="vh-item">
+                            <label>Path:</label>
+                            <span>{{.Path}}</span>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        <!-- SSH Virtual Hosts Details -->
+        {{if .Config.SSHVirtualHosts}}
+        <div class="config-section">
+            <h2><i class="fas fa-terminal"></i> SSH Virtual Hosts Details</h2>
+            <div class="virtual-hosts-list">
+                {{range .Config.SSHVirtualHosts}}
+                <div class="virtual-host-card">
+                    <h3>{{.From}}</h3>
+                    <div class="vh-details">
+                        <div class="vh-item">
+                            <label>Host:</label>
+                            <span>{{.HostName}}</span>
+                        </div>
+                        <div class="vh-item">
+                            <label>Port:</label>
+                            <span>{{.Port}}</span>
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        <!-- gRPC Virtual Hosts Details -->
+        {{if .Config.GrpcVirtualHosts}}
+        <div class="config-section">
+            <h2><i class="fas fa-exchange-alt"></i> gRPC Virtual Hosts Details</h2>
+            <div class="virtual-hosts-list">
+                {{range .Config.GrpcVirtualHosts}}
+                <div class="virtual-host-card">
+                    <h3>{{.From}}</h3>
+                    <div class="vh-details">
+                        <div class="vh-item">
+                            <label>Host:</label>
+                            <span>{{.HostName}}</span>
+                        </div>
+                        <div class="vh-item">
+                            <label>Port:</label>
+                            <span>{{.Port}}</span>
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Raw JSON Configuration -->
+        <div class="config-section">
+            <h2><i class="fas fa-code"></i> Raw Configuration (JSON)</h2>
+            <div class="json-config">
+                <pre><code>{{.RawConfig}}</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}

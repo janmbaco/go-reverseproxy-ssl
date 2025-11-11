@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go ReverseProxy SSL - Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .status {
+            background: #10b981;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            display: inline-block;
+            font-weight: bold;
+            margin: 1rem 0;
+        }
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .nav-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            color: white;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+        .nav-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .nav-card.purple {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .nav-card.pink {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .nav-card.blue {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .nav-card.green {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        .nav-card.orange {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        .nav-card h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.5rem;
+        }
+        .nav-card p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        .info {
+            background: #f3f4f6;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-top: 1.5rem;
+            text-align: left;
+        }
+        .info strong {
+            color: #667eea;
+        }
+        code {
+            background: #1f2937;
+            color: #10b981;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .section-title {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: #4b5563;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 Go ReverseProxy SSL - Dashboard</h1>
+        <div style="text-align: center;">
+            <div class="status">✓ Sistema Funcionando</div>
+        </div>
+        
+        <div class="info">
+            <p><strong>Protocolo:</strong> <code id="protocol">HTTP/1.1</code></p>
+            <p><strong>Host:</strong> <code id="host"></code></p>
+            <p><strong>Proxy:</strong> <code>go-reverseproxy-ssl</code></p>
+        </div>
+
+        <h2 class="section-title">⚙️ Gestión de Configuración</h2>
+        <div class="nav-grid">
+            <a href="http://localhost:8081" target="_blank" class="nav-card green">
+                <h3>🎛️ Config UI</h3>
+                <p>Interfaz de gestión de configuración</p>
+            </a>
+        </div>
+
+        <h2 class="section-title">🧪 Servicios de Prueba</h2>
+        <div class="nav-grid">
+            <a href="/prueba-1" class="nav-card purple">
+                <h3>🚀 Servicio 1</h3>
+                <p>Puerto 8081 - Prueba Purple</p>
+            </a>
+            <a href="/prueba-2" class="nav-card pink">
+                <h3>🎯 Servicio 2</h3>
+                <p>Puerto 8082 - Prueba Pink</p>
+            </a>
+            <a href="/prueba-3" class="nav-card blue">
+                <h3>⚡ Servicio 3</h3>
+                <p>Puerto 8083 - Prueba Blue</p>
+            </a>
+        </div>
+
+        <p style="margin-top: 2rem; color: #6b7280; text-align: center; font-size: 0.9rem;">
+            Todos los servicios están siendo enrutados a través del reverse proxy con SSL
+        </p>
+    </div>
+    
+    <script>
+        document.getElementById('protocol').textContent = window.location.protocol === 'https:' ? 'HTTPS (SSL)' : 'HTTP';
+        document.getElementById('host').textContent = window.location.hostname;
+    </script>
+</body>
+</html>

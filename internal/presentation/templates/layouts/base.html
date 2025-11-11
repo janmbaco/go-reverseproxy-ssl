@@ -1,0 +1,53 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Reverse Proxy Config</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-server"></i>
+                Reverse Proxy Config
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="/" class="nav-link {{if eq .ActivePage "dashboard"}}active{{end}}">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/virtualhosts" class="nav-link {{if eq .ActivePage "virtualhosts"}}active{{end}}">
+                        <i class="fas fa-globe"></i> Virtual Hosts
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/config" class="nav-link {{if eq .ActivePage "config"}}active{{end}}">
+                        <i class="fas fa-cogs"></i> Configuration
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        {{if eq .Template "dashboard-content"}}
+            {{template "dashboard-content" .}}
+        {{else if eq .Template "config-content"}}
+            {{template "config-content" .}}
+        {{else if eq .Template "virtualhosts-content"}}
+            {{template "virtualhosts-content" .}}
+        {{else if eq .Template "virtualhost-form-content"}}
+            {{template "virtualhost-form-content" .}}
+        {{end}}
+    </main>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
+{{end}}

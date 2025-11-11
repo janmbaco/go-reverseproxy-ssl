@@ -1,0 +1,389 @@
+{{define "virtualhost-form-content"}}
+<div class="virtualhost-form">
+    <div class="page-header">
+        <div class="header-content">
+            <h1>
+                {{if .IsEdit}}
+                    <i class="fas fa-edit"></i> Edit Virtual Host
+                {{else}}
+                    <i class="fas fa-plus"></i> New Virtual Host
+                {{end}}
+            </h1>
+            <p class="subtitle">
+                {{if .IsEdit}}
+                    Modify the virtual host configuration
+                {{else}}
+                    Create a new virtual host for your reverse proxy
+                {{end}}
+            </p>
+        </div>
+        <div class="header-actions">
+            <a href="/virtualhosts" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    <form id="virtualhostForm" class="form-container">
+        <div class="form-section">
+            <h2><i class="fas fa-info-circle"></i> Basic Configuration</h2>
+
+            <div class="form-group">
+                <label for="from">From (Domain)</label>
+                <input type="text" id="from" name="from" value="{{.VirtualHost.From}}" required
+                       placeholder="example.com">
+                <small>The domain name that clients will use to access this virtual host</small>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="scheme">Scheme</label>
+                    <select id="scheme" name="scheme" required>
+                        <option value="http" {{if eq .VirtualHost.Scheme "http"}}selected{{end}}>HTTP</option>
+                        <option value="https" {{if eq .VirtualHost.Scheme "https"}}selected{{end}}>HTTPS</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="hostName">Host Name</label>
+                    <input type="text" id="hostName" name="hostName" value="{{.VirtualHost.HostName}}" required
+                           placeholder="localhost">
+                </div>
+
+                <div class="form-group">
+                    <label for="port">Port</label>
+                    <input type="number" id="port" name="port" value="{{.VirtualHost.Port}}" required
+                           placeholder="8080">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="path">Path (Optional)</label>
+                <input type="text" id="path" name="path" value="{{.VirtualHost.Path}}"
+                       placeholder="/api">
+                <small>Optional path prefix for routing</small>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2><i class="fas fa-shield-alt"></i> SSL/TLS Configuration</h2>
+
+            <div class="cert-notice">
+                <div class="notice-icon">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <div class="notice-content">
+                    <h4>Certificate Information</h4>
+                    <p>If no custom certificate is uploaded, Let's Encrypt will automatically provide and renew SSL certificates for this domain.</p>
+                    <p><strong>Requirements for Let's Encrypt:</strong></p>
+                    <ul>
+                        <li>DNS must point to this server</li>
+                        <li>Ports 80 and 443 must be accessible</li>
+                        <li>Domain must be publicly resolvable</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="useServerCert" name="useServerCert"
+                           {{if .VirtualHost.ServerCertificate}}checked{{end}}>
+                    Use custom server certificate (instead of Let's Encrypt)
+                </label>
+            </div>
+
+            <div id="serverCertFields" class="form-group {{if not .VirtualHost.ServerCertificate}}hidden{{end}}">
+                <label>Server Certificate File</label>
+                <div class="file-input-container">
+                    {{if .VirtualHost.ServerCertificate}}
+                    <div class="current-file-display">
+                        <span class="file-name">{{.VirtualHost.ServerCertificate.PublicKey}}</span>
+                        <button type="button" class="btn-file-action btn-load" onclick="document.getElementById('serverCertFile').click()">
+                            <i class="fas fa-upload"></i> Replace
+                        </button>
+                        <button type="button" class="btn-file-action btn-clear" onclick="clearServerCert()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    {{else}}
+                    <div class="file-drop-zone" onclick="document.getElementById('serverCertFile').click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Click to upload or drag & drop</p>
+                        <small>SSL certificate file (.pem, .crt, or .cer)</small>
+                    </div>
+                    {{end}}
+                    <input type="file" id="serverCertFile" name="serverCertFile" accept=".pem,.crt,.cer" style="display: none;">
+                </div>
+
+                <label>Private Key File</label>
+                <div class="file-input-container">
+                    {{if .VirtualHost.ServerCertificate}}
+                    <div class="current-file-display">
+                        <span class="file-name">{{.VirtualHost.ServerCertificate.PrivateKey}}</span>
+                        <button type="button" class="btn-file-action btn-load" onclick="document.getElementById('serverKeyFile').click()">
+                            <i class="fas fa-upload"></i> Replace
+                        </button>
+                        <button type="button" class="btn-file-action btn-clear" onclick="clearServerKey()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    {{else}}
+                    <div class="file-drop-zone" onclick="document.getElementById('serverKeyFile').click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Click to upload or drag & drop</p>
+                        <small>Private key file (.key or .pem)</small>
+                    </div>
+                    {{end}}
+                    <input type="file" id="serverKeyFile" name="serverKeyFile" accept=".key,.pem" style="display: none;">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="useClientCert" name="useClientCert"
+                           {{if .VirtualHost.ClientCertificate}}checked{{end}}>
+                    Require client certificate (mTLS)
+                </label>
+            </div>
+
+            <div id="clientCertFields" class="form-group {{if not .VirtualHost.ClientCertificate}}hidden{{end}}">
+                <label>Client Certificate Authority File</label>
+                <div class="file-input-container">
+                    {{if .VirtualHost.ClientCertificate}}
+                    <div class="current-file-display">
+                        <span class="file-name">{{index .VirtualHost.ClientCertificate.CaPem 0}}</span>
+                        <button type="button" class="btn-file-action btn-load" onclick="document.getElementById('clientCertFile').click()">
+                            <i class="fas fa-upload"></i> Replace
+                        </button>
+                        <button type="button" class="btn-file-action btn-clear" onclick="clearClientCert()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    {{else}}
+                    <div class="file-drop-zone" onclick="document.getElementById('clientCertFile').click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Click to upload or drag & drop</p>
+                        <small>CA certificate file (.pem, .crt, or .cer)</small>
+                    </div>
+                    {{end}}
+                    <input type="file" id="clientCertFile" name="clientCertFile" accept=".pem,.crt,.cer" style="display: none;">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="history.back()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+                <i class="fas fa-save"></i>
+                {{if .IsEdit}}Update{{else}}Create{{end}} Virtual Host
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.getElementById('useServerCert').addEventListener('change', function() {
+    document.getElementById('serverCertFields').classList.toggle('hidden', !this.checked);
+});
+
+document.getElementById('useClientCert').addEventListener('change', function() {
+    document.getElementById('clientCertFields').classList.toggle('hidden', !this.checked);
+});
+
+function clearServerCert() {
+    const input = document.getElementById('serverCertFile');
+    input.value = '';
+    const container = input.closest('.file-input-container');
+    const currentDisplay = container.querySelector('.current-file-display');
+    const dropZone = container.querySelector('.file-drop-zone');
+    if (currentDisplay) {
+        currentDisplay.remove();
+    }
+    if (dropZone) {
+        dropZone.style.display = 'block';
+    }
+}
+
+function clearServerKey() {
+    const input = document.getElementById('serverKeyFile');
+    input.value = '';
+    const container = input.closest('.file-input-container');
+    const currentDisplay = container.querySelector('.current-file-display');
+    const dropZone = container.querySelector('.file-drop-zone');
+    if (currentDisplay) {
+        currentDisplay.remove();
+    }
+    if (dropZone) {
+        dropZone.style.display = 'block';
+    }
+}
+
+function clearClientCert() {
+    const input = document.getElementById('clientCertFile');
+    input.value = '';
+    const container = input.closest('.file-input-container');
+    const currentDisplay = container.querySelector('.current-file-display');
+    const dropZone = container.querySelector('.file-drop-zone');
+    if (currentDisplay) {
+        currentDisplay.remove();
+    }
+    if (dropZone) {
+        dropZone.style.display = 'block';
+    }
+}
+
+// Drag & drop support
+function setupDragDrop(dropZoneSelector, inputId) {
+    const dropZones = document.querySelectorAll(dropZoneSelector);
+    const input = document.getElementById(inputId);
+    
+    dropZones.forEach(dropZone => {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('drag-over');
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('drag-over');
+            }, false);
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                input.files = files;
+                input.dispatchEvent(new Event('change'));
+            }
+        }, false);
+    });
+}
+
+// Setup drag & drop for all file inputs
+setupDragDrop('.file-drop-zone', 'serverCertFile');
+setupDragDrop('.file-drop-zone', 'serverKeyFile');
+setupDragDrop('.file-drop-zone', 'clientCertFile');
+
+// Update file display when files are selected
+document.getElementById('serverCertFile').addEventListener('change', function(e) {
+    if (e.target.files.length > 0) {
+        updateFileDisplay('serverCert', e.target.files[0].name);
+    }
+});
+
+document.getElementById('serverKeyFile').addEventListener('change', function(e) {
+    if (e.target.files.length > 0) {
+        updateFileDisplay('serverKey', e.target.files[0].name);
+    }
+});
+
+document.getElementById('clientCertFile').addEventListener('change', function(e) {
+    if (e.target.files.length > 0) {
+        updateFileDisplay('clientCert', e.target.files[0].name);
+    }
+});
+
+function updateFileDisplay(type, fileName) {
+    const input = document.getElementById(type + 'File');
+    const container = input.closest('.file-input-container');
+    const currentDisplay = container.querySelector('.current-file-display');
+    const dropZone = container.querySelector('.file-drop-zone');
+    
+    if (dropZone) {
+        dropZone.style.display = 'none';
+        
+        let displayDiv = currentDisplay;
+        if (!displayDiv) {
+            displayDiv = document.createElement('div');
+            displayDiv.className = 'current-file-display';
+            displayDiv.innerHTML = `
+                <span class="file-name">${fileName}</span>
+                <button type="button" class="btn-file-action btn-load" onclick="document.getElementById('${type}File').click()">
+                    <i class="fas fa-upload"></i> Replace
+                </button>
+                <button type="button" class="btn-file-action btn-clear" onclick="clear${type.charAt(0).toUpperCase() + type.slice(1)}()">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            container.insertBefore(displayDiv, dropZone);
+        } else {
+            displayDiv.querySelector('.file-name').textContent = fileName;
+        }
+    } else if (currentDisplay) {
+        currentDisplay.querySelector('.file-name').textContent = fileName;
+    }
+}
+
+document.getElementById('virtualhostForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+
+    const method = '{{if .IsEdit}}POST{{else}}POST{{end}}';
+    const url = '{{if .IsEdit}}/api/virtualhosts/{{.VirtualHost.GetID}}{{else}}/api/virtualhosts{{end}}';
+
+    fetch(url, {
+        method: method,
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSuccessMessage('Virtual host {{if .IsEdit}}updated{{else}}created{{end}} successfully. Changes applied.');
+            setTimeout(() => {
+                window.location.href = '/virtualhosts';
+            }, 2000);
+        } else {
+            showErrorMessage('Error saving virtual host: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showErrorMessage('Error saving virtual host');
+    });
+});
+
+function showSuccessMessage(message) {
+    showMessage(message, 'success');
+}
+
+function showErrorMessage(message) {
+    showMessage(message, 'error');
+}
+
+function showMessage(message, type) {
+    // Remove existing messages
+    const existing = document.querySelector('.message-notification');
+    if (existing) existing.remove();
+    
+    // Create message element
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `message-notification ${type}`;
+    msgDiv.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()" class="message-close">&times;</button>
+    `;
+    
+    // Add to page
+    document.body.appendChild(msgDiv);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (msgDiv.parentElement) msgDiv.remove();
+    }, 5000);
+}
+</script>
+{{end}}

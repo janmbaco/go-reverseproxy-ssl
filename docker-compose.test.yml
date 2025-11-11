@@ -1,0 +1,65 @@
+services:
+  # Backend test services
+  backend-8080:
+    image: nginx:alpine
+    container_name: backend-8080
+    command: sh -c "echo 'Service on port 8080' > /usr/share/nginx/html/index.html && nginx -g 'daemon off;'"
+    networks:
+      - test-network
+
+  backend-8081:
+    image: nginx:alpine
+    container_name: backend-8081
+    command: sh -c "echo 'Service on port 8081' > /usr/share/nginx/html/index.html && nginx -g 'daemon off;'"
+    networks:
+      - test-network
+
+  backend-8082:
+    image: nginx:alpine
+    container_name: backend-8082
+    command: sh -c "echo 'Service on port 8082' > /usr/share/nginx/html/index.html && nginx -g 'daemon off;'"
+    networks:
+      - test-network
+
+  backend-8083:
+    image: nginx:alpine
+    container_name: backend-8083
+    command: sh -c "echo 'Service on port 8083' > /usr/share/nginx/html/index.html && nginx -g 'daemon off;'"
+    networks:
+      - test-network
+
+  grpc-backend:
+    build:
+      context: ./build/package/docker/grpc-server
+      dockerfile: Dockerfile
+    container_name: grpc-backend
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "grpc-health-probe", "-addr=localhost:7656"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Reverse proxy
+  reverse-proxy:
+    image: go-reverseproxy-ssl:test
+    container_name: reverse-proxy
+    ports:
+      - "443:443"
+    volumes:
+      - ./integration/testdata:/tmp/mounted-certs:ro
+      - ./integration/testdata/config.json:/app/config/config.json:ro
+    depends_on:
+      - backend-8080
+      - backend-8081
+      - backend-8082
+      - backend-8083
+      - grpc-backend
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge

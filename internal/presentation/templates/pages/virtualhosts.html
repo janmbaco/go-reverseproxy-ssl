@@ -1,0 +1,218 @@
+{{define "virtualhosts-content"}}
+<div class="virtualhosts">
+    <div class="page-header">
+        <div class="header-content">
+            <h1><i class="fas fa-globe"></i> Virtual Hosts</h1>
+            <p class="subtitle">Manage your reverse proxy virtual hosts</p>
+        </div>
+        <div class="header-actions">
+            <a href="/virtualhosts/new" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add Virtual Host
+            </a>
+        </div>
+    </div>
+
+    <div class="virtualhosts-grid">
+        {{range .VirtualHosts}}
+        <div class="vhost-card">
+            <div class="vhost-header">
+                <h3>{{.GetFrom}}</h3>
+                <div class="vhost-actions">
+                    <a href="/virtualhosts/edit/{{.GetID}}" class="btn btn-sm btn-secondary" title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <button onclick="deleteVirtualHost('{{.GetID}}', '{{.GetFrom}}')" class="btn btn-sm btn-danger" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="vhost-body">
+                <div class="vhost-info">
+                    <div class="info-item">
+                        <i class="fas fa-arrow-right"></i>
+                        <span>{{.GetURL}}</span>
+                    </div>
+                    {{if .GetServerCertificate}}
+                    <div class="info-item">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>SSL Certificate</span>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+            <div class="vhost-footer">
+                <span class="badge badge-active">Active</span>
+            </div>
+        </div>
+        {{else}}
+        <div class="empty-state">
+            <i class="fas fa-globe"></i>
+            <h3>No virtual hosts configured</h3>
+            <p>Create your first virtual host to get started</p>
+            <a href="/virtualhosts/new" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create Virtual Host
+            </a>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-exclamation-triangle"></i> Confirm Deletion</h2>
+            <span class="modal-close" onclick="closeDeleteModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete the virtual host <strong id="deleteVhName"></strong>?</p>
+            <p>This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeDeleteModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDelete()">
+                <i class="fas fa-trash"></i> Delete Virtual Host
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let vhToDelete = '';
+let vhToDeleteName = '';
+
+function deleteVirtualHost(id, name) {
+    vhToDelete = id;
+    vhToDeleteName = name;
+    document.getElementById('deleteVhName').textContent = name;
+    
+    const modal = document.getElementById('deleteModal');
+    modal.style.display = 'flex';
+    modal.offsetHeight; // Trigger reflow
+    modal.classList.add('modal-visible');
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteModal');
+    modal.classList.remove('modal-visible');
+    setTimeout(() => {
+        modal.style.display = 'none';
+        vhToDelete = '';
+        vhToDeleteName = '';
+    }, 300);
+}
+
+function confirmDelete() {
+    if (!vhToDelete) return;
+    
+    console.log('Attempting to delete virtual host ID:', vhToDelete, 'Name:', vhToDeleteName);
+    
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+    
+    fetch(`/virtualhosts/delete/${vhToDelete}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
+        if (!response.ok) {
+            // Handle HTTP errors
+            if (response.status === 404) {
+                throw new Error('Virtual host not found');
+            } else if (response.status === 500) {
+                throw new Error('Server error occurred while deleting');
+            } else {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response data:', data);
+        
+        if (data.success) {
+            closeDeleteModal();
+            showSuccessMessage('Virtual host deleted successfully.');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showErrorMessage('Error deleting virtual host: ' + (data.error || 'Unknown error'));
+            resetDeleteButton();
+        }
+    })
+    .catch(error => {
+        console.error('Delete error:', error);
+        let errorMessage = 'Error deleting virtual host';
+        
+        if (error.message) {
+            errorMessage += ': ' + error.message;
+        }
+        
+        showErrorMessage(errorMessage);
+        resetDeleteButton();
+    });
+}
+
+function resetDeleteButton() {
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    confirmBtn.disabled = false;
+    confirmBtn.innerHTML = '<i class="fas fa-trash"></i> Delete Virtual Host';
+}
+
+function showSuccessMessage(message) {
+    showMessage(message, 'success');
+}
+
+function showErrorMessage(message) {
+    showMessage(message, 'error');
+}
+
+function showMessage(message, type) {
+    // Remove existing messages
+    const existing = document.querySelector('.message-notification');
+    if (existing) existing.remove();
+    
+    // Create message element
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `message-notification ${type}`;
+    msgDiv.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()" class="message-close">&times;</button>
+    `;
+    
+    // Add to page
+    document.body.appendChild(msgDiv);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (msgDiv.parentElement) msgDiv.remove();
+    }, 5000);
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('deleteModal');
+    if (event.target === modal) {
+        closeDeleteModal();
+    }
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const modal = document.getElementById('deleteModal');
+        if (modal.style.display === 'flex') {
+            closeDeleteModal();
+        }
+    }
+});
+</script>
+{{end}}
