@@ -16,10 +16,10 @@ import (
 	logsResolver "github.com/janmbaco/go-infrastructure/v2/logs/ioc/resolver"
 	serverIoc "github.com/janmbaco/go-infrastructure/v2/server/ioc"
 	serverResolver "github.com/janmbaco/go-infrastructure/v2/server/ioc/resolver"
-	"github.com/janmbaco/go-reverseproxy-ssl/internal/application"
-	resolver "github.com/janmbaco/go-reverseproxy-ssl/internal/application/hosts_resolver"
-	"github.com/janmbaco/go-reverseproxy-ssl/internal/domain"
-	"github.com/janmbaco/go-reverseproxy-ssl/internal/presentation"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/application"
+	resolver "github.com/janmbaco/go-reverseproxy-ssl/v3/internal/application/hosts_resolver"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/domain"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/presentation"
 )
 
 type ServerBootstrapper struct {

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	certs "github.com/janmbaco/go-reverseproxy-ssl/internal/infrastructure/certificates"
+	certs "github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/certificates"
 )
 
 // VirtualHostBase is used to configure a virtual host.

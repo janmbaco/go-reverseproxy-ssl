@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/janmbaco/go-reverseproxy-ssl/internal/infrastructure/grpcutil"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/grpcutil"
 	"github.com/stretchr/testify/assert"
 )
 

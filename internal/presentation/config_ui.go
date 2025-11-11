@@ -14,8 +14,8 @@ import (
 	"strings"
 
 	"github.com/janmbaco/go-infrastructure/v2/configuration"
-	"github.com/janmbaco/go-reverseproxy-ssl/internal/domain"
-	certificates "github.com/janmbaco/go-reverseproxy-ssl/internal/infrastructure/certificates"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/domain"
+	certificates "github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/certificates"
 )
 
 //go:embed static/css/* static/js/*

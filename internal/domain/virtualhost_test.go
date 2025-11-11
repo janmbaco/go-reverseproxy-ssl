@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/janmbaco/go-reverseproxy-ssl/internal/mocks"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

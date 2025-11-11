@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/janmbaco/go-infrastructure/v2/dependencyinjection"
-	"github.com/janmbaco/go-reverseproxy-ssl/internal/domain"
-	"github.com/janmbaco/go-reverseproxy-ssl/internal/infrastructure/grpcutil"
-	"github.com/janmbaco/go-reverseproxy-ssl/internal/mocks"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/domain"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/grpcutil"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

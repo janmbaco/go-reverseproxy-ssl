@@ -3,7 +3,7 @@ package grpcutil
 import (
 	"testing"
 
-	certs "github.com/janmbaco/go-reverseproxy-ssl/internal/infrastructure/certificates"
+	certs "github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/certificates"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

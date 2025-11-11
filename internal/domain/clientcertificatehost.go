@@ -1,7 +1,7 @@
 package domain
 
 import (
-	certs "github.com/janmbaco/go-reverseproxy-ssl/internal/infrastructure/certificates"
+	certs "github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/certificates"
 )
 
 // ClientCertificateHost is used to configure a simple virtual host using TLS client communication.

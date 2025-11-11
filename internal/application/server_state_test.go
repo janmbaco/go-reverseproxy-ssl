@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/janmbaco/go-reverseproxy-ssl/internal/domain"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
 

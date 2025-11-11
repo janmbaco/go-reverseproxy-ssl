@@ -7,8 +7,8 @@ import (
 
 	"github.com/janmbaco/go-infrastructure/v2/configuration"
 	"github.com/janmbaco/go-infrastructure/v2/server"
-	"github.com/janmbaco/go-reverseproxy-ssl/internal/domain"
-	certs "github.com/janmbaco/go-reverseproxy-ssl/internal/infrastructure/certificates"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/domain"
+	certs "github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/certificates"
 	"golang.org/x/crypto/acme/autocert"
 )
 

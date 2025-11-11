@@ -4,7 +4,7 @@ import (
 	"flag"
 	"os"
 
-	"github.com/janmbaco/go-reverseproxy-ssl/internal/infrastructure"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure"
 )
 
 func main() {
