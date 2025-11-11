@@ -30,7 +30,7 @@ services:
 
   grpc-backend:
     build:
-      context: ../build/package/docker/grpc-server
+      context: ../../build/package/docker/grpc-server
       dockerfile: Dockerfile
     container_name: grpc-backend
     networks:
@@ -49,8 +49,8 @@ services:
     ports:
       - "443:443"
     volumes:
-      - ./integration/testdata:/tmp/mounted-certs:ro
-      - ./integration/testdata:/app/config:ro
+      - ./testdata:/tmp/mounted-certs:ro
+      - ./testdata:/app/config:ro
     depends_on:
       - backend-8080
       - backend-8081

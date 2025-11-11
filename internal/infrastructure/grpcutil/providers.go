@@ -3,7 +3,6 @@ package grpcutil
 import (
 	"context"
 
-	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	certs "github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/certificates"
 	"github.com/mwitkow/grpc-proxy/proxy"
 	"google.golang.org/grpc"
@@ -14,7 +13,7 @@ import (
 
 // NewGrpcServer returns a grpc Server
 func NewGrpcServer(grpcWebProxy *GrpcWebProxy, clientConn *grpc.ClientConn) *grpc.Server {
-	director := func(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error) {
+	director := func(ctx context.Context, fullMethodName string) (context.Context, grpc.ClientConnInterface, error) {
 		md, _ := metadata.FromIncomingContext(ctx)
 		mdCopy := md.Copy()
 		delete(mdCopy, "user-agent")
@@ -48,7 +47,7 @@ func NewGrpcServer(grpcWebProxy *GrpcWebProxy, clientConn *grpc.ClientConn) *grp
 }
 
 // NewWrappedGrpcServer returns a gRPC Web wrapped server.
-func NewWrappedGrpcServer(grpcWebProxy *GrpcWebProxy, grpcServer *grpc.Server) *grpcweb.WrappedGrpcServer {
+func NewWrappedGrpcServer(grpcWebProxy *GrpcWebProxy, grpcServer *grpc.Server) *WrappedGrpcServer {
 	if grpcWebProxy.AllowedOrigins == nil {
 		grpcWebProxy.AllowedOrigins = make([]string, 0)
 	}
@@ -58,24 +57,24 @@ func NewWrappedGrpcServer(grpcWebProxy *GrpcWebProxy, grpcServer *grpc.Server) *
 	// This ensures that only explicitly registered services/methods are accessible
 	corsForRegisteredOnly := !grpcWebProxy.IsTransparentServer
 
-	options := []grpcweb.Option{
-		grpcweb.WithCorsForRegisteredEndpointsOnly(corsForRegisteredOnly),
-		grpcweb.WithOriginFunc(grpcWebProxy.makeHTTPOriginFunc()),
+	options := []Option{
+		WithCorsForRegisteredEndpointsOnly(corsForRegisteredOnly),
+		WithOriginFunc(grpcWebProxy.makeHTTPOriginFunc()),
 	}
 	if grpcWebProxy.UseWebSockets {
 		options = append(
 			options,
-			grpcweb.WithWebsockets(true),
-			grpcweb.WithWebsocketOriginFunc(grpcWebProxy.getWebsocketOriginFunc()),
+			WithWebsockets(true),
+			WithWebsocketOriginFunc(grpcWebProxy.getWebsocketOriginFunc()),
 		)
 	}
 	if len(grpcWebProxy.AllowedHeaders) > 0 {
 		options = append(
 			options,
-			grpcweb.WithAllowedRequestHeaders(grpcWebProxy.AllowedHeaders),
+			WithAllowedRequestHeaders(grpcWebProxy.AllowedHeaders),
 		)
 	}
-	return grpcweb.WrapServer(grpcServer, options...)
+	return WrapServer(grpcServer, options...)
 }
 
 // NewGrpcClientConn return a client for a gRPC server.

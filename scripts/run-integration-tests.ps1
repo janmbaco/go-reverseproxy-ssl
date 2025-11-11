@@ -4,7 +4,7 @@
 # For Linux/macOS, use: ./scripts/run-integration-tests.sh
 
 param(
-    [int]$TimeoutMinutes = 10
+    [int]$TimeoutMinutes = 2
 )
 
 Write-Host "🚀 Go Reverse Proxy SSL - Integration Test Runner" -ForegroundColor Green
@@ -131,7 +131,7 @@ Test-TimeoutAndExit "application build"
 
 # Start all services with Docker Compose
 Write-Host "✓ Starting all services with Docker Compose..." -ForegroundColor Green
-docker-compose -f docker-compose.test.yml up -d
+docker-compose -f integration/docker-compose.test.yml up -d
 if ($LASTEXITCODE -ne 0) {
     Write-Host "✗ Failed to start services" -ForegroundColor Red
     exit 1
@@ -149,8 +149,8 @@ while ($true) {
     } catch {
         if ($counter -ge $timeout) {
             Write-Host "✗ Service failed to start within $timeout seconds" -ForegroundColor Red
-            docker-compose -f docker-compose.test.yml logs reverse-proxy
-            docker-compose -f docker-compose.test.yml down
+            docker-compose -f integration/docker-compose.test.yml logs reverse-proxy
+            docker-compose -f integration/docker-compose.test.yml down
             exit 1
         }
         $counter++
@@ -178,7 +178,7 @@ if ($exitCode -eq 0) {
 
 # Cleanup
 Write-Host "✓ Cleaning up..." -ForegroundColor Green
-docker-compose -f docker-compose.test.yml down
+docker-compose -f integration/docker-compose.test.yml down
 
 # Remove generated certificates
 Remove-Item "$PWD/integration/testdata/localhost-cert.pem" -ErrorAction SilentlyContinue

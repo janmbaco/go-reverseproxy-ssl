@@ -3,7 +3,7 @@ package domain
 import (
 	"testing"
 
-	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/grpcutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,7 +17,7 @@ func TestGrpcWebVirtualHost_GrpcWebVirtualHostProvider_WhenCalled_ThenReturnsCon
 			},
 		},
 	}
-	var mockServer *grpcweb.WrappedGrpcServer
+	var mockServer *grpcutil.WrappedGrpcServer
 
 	// Act
 	vh := GrpcWebVirtualHostProvider(host, mockServer, mockLogger)

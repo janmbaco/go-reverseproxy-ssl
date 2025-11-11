@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/janmbaco/go-infrastructure/v2/dependencyinjection"
 	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/domain"
 	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/grpcutil"
@@ -40,7 +39,7 @@ func NewVirtualHostResolver(container dependencyinjection.Container, logger doma
 	// register grputil
 	container.Register().AsScope(new(*grpc.ClientConn), grpcutil.NewGrpcClientConn, map[int]string{0: _grpcWebProxy, 1: _clientCertificate, 2: _hostName})
 	container.Register().AsScope(new(*grpc.Server), grpcutil.NewGrpcServer, map[int]string{0: _grpcWebProxy})
-	container.Register().AsScope(new(*grpcweb.WrappedGrpcServer), grpcutil.NewWrappedGrpcServer, map[int]string{0: _grpcWebProxy})
+	container.Register().AsScope(new(*grpcutil.WrappedGrpcServer), grpcutil.NewWrappedGrpcServer, map[int]string{0: _grpcWebProxy})
 
 	return &virtualHostResolver{resolver: container.Resolver()}
 }

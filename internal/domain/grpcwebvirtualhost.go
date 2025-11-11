@@ -3,7 +3,6 @@ package domain
 import (
 	"net/http"
 
-	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/janmbaco/copier"
 	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/grpcutil"
 )
@@ -12,11 +11,11 @@ import (
 type GrpcWebVirtualHost struct {
 	ClientCertificateHost
 	GrpcWebProxy *grpcutil.GrpcWebProxy `json:"grpc_web_proxy"`
-	server       *grpcweb.WrappedGrpcServer
+	server       *grpcutil.WrappedGrpcServer
 }
 
 // GrpcWebVirtualHostProvider provides a IVirtualHost
-func GrpcWebVirtualHostProvider(host *GrpcWebVirtualHost, server *grpcweb.WrappedGrpcServer, logger Logger) IVirtualHost {
+func GrpcWebVirtualHostProvider(host *GrpcWebVirtualHost, server *grpcutil.WrappedGrpcServer, logger Logger) IVirtualHost {
 	host.server = server
 	host.logger = logger
 	return host

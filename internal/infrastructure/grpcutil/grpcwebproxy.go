@@ -1,10 +1,8 @@
 package grpcutil
 
 import (
+	"log"
 	"net/http"
-
-	"github.com/improbable-eng/grpc-web/go/grpcweb"
-	"google.golang.org/grpc/grpclog"
 )
 
 // GrpcWebProxy is the object responsible to create a communication  gRPC Web Server that calls other gRPC Server.
@@ -57,9 +55,9 @@ type allowedOriginsFormat struct {
 
 func (allowedOriginsFormat *allowedOriginsFormat) getWebsocketOriginFunc() func(req *http.Request) bool {
 	return func(req *http.Request) bool {
-		origin, err := grpcweb.WebsocketRequestOrigin(req)
+		origin, err := WebsocketRequestOrigin(req)
 		if err != nil {
-			grpclog.Warning(err)
+			log.Printf("Warning: %v", err)
 			return false
 		}
 		return allowedOriginsFormat.IsAllowed(origin)

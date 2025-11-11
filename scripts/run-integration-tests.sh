@@ -119,7 +119,7 @@ validate_configuration() {
 # Cleanup function
 cleanup() {
     print_success "Cleaning up..."
-    docker-compose -f docker-compose.test.yml down 2>/dev/null || true
+    docker-compose -f integration/docker-compose.test.yml down 2>/dev/null || true
     
     # Remove generated certificates
     rm -f "./integration/testdata/localhost-cert.pem" 2>/dev/null || true
@@ -156,7 +156,7 @@ check_timeout "application build"
 
 # Start all services with Docker Compose
 print_success "Starting all services with Docker Compose..."
-if ! docker-compose -f docker-compose.test.yml up -d; then
+if ! docker-compose -f integration/docker-compose.test.yml up -d; then
     print_error "Failed to start services"
     exit 1
 fi
@@ -173,7 +173,7 @@ while true; do
 
     if [ $counter -ge $timeout ]; then
         print_error "Service failed to start within $timeout seconds"
-        docker-compose -f docker-compose.test.yml logs reverse-proxy
+        docker-compose -f integration/docker-compose.test.yml logs reverse-proxy
         exit 1
     fi
 

@@ -26,28 +26,7 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Start test services
+      - name: Start test services and run integration tests
         run: |
-          # Build and start the reverse proxy
-          docker build -f build/package/Dockerfile -t go-reverseproxy-ssl:test .
-          docker run -d --name reverse-proxy \
-            -p 443:443 \
-            -v ${{ github.workspace }}/integration/testdata:/app/test-html \
-            -v ${{ github.workspace }}/certs:/app/certs \
-            go-reverseproxy-ssl:test \
-            --config /app/integration/testdata/config.json
-
-          # Wait for services to be ready
-          timeout 30 bash -c 'until curl -k https://localhost/ > /dev/null 2>&1; do sleep 1; done'
-
-      - name: Run integration tests
-        run: INTEGRATION_TEST=true go test -v -race ./integration/...
-
-      - name: Stop services
-        if: always()
-        run: |
-          docker stop reverse-proxy || true
-          docker rm reverse-proxy || true
+          chmod +x scripts/run-integration-tests.sh
+          ./scripts/run-integration-tests.sh

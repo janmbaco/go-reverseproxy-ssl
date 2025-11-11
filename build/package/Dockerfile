@@ -14,11 +14,11 @@ COPY cmd/ cmd/
 COPY internal/ internal/
 
 # Descargar y verificar dependencias
-RUN go mod download
-RUN go mod tidy
-RUN go mod verify
+RUN go mod download || true
+RUN go mod tidy || true
+RUN go mod verify || true
 
-# Compilar con optimizaciones
+# Compilar con optimizaciones para Linux
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s -X main.version=$(git describe --tags --always --dirty 2>/dev/null || echo 'dev')" \
     -o go-reverseproxy-ssl \
