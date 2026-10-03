@@ -15,7 +15,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.27.1'
           cache: true
 
       - name: Download dependencies
@@ -26,6 +26,14 @@ jobs:
 
       - name: Test
         run: go test -v -race $(go list ./... | grep -v integration)
+
+      - name: Check release for vulnerabilities
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
+          govulncheck ./...
+          cd build/package/docker/grpc-server
+          go test ./...
+          govulncheck ./...
         
       - name: Log into docker hub
         uses: docker/login-action@v3

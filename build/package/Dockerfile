@@ -1,7 +1,7 @@
 # ============================================
 # Build Stage
 # ============================================
-FROM golang:1.25-alpine AS builder
+FROM golang:1.27.1-alpine AS builder
 
 WORKDIR /build
 
@@ -14,9 +14,7 @@ COPY cmd/ cmd/
 COPY internal/ internal/
 
 # Descargar y verificar dependencias
-RUN go mod download || true
-RUN go mod tidy || true
-RUN go mod verify || true
+RUN go mod download && go mod verify
 
 # Compilar con optimizaciones para Linux
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \

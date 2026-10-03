@@ -13,8 +13,8 @@ Development Dockerfile with debugging capabilities:
 
 **Usage:**
 ```bash
-# Build debug image
-docker build -f docker/Dockerfile.dev -t go-reverseproxy-ssl:debug .
+# Build from this repository's root; sibling repositories are not required.
+docker build -f build/package/docker/Dockerfile.dev -t go-reverseproxy-ssl:debug .
 
 # Run with debugging enabled
 docker run -d \
@@ -35,7 +35,7 @@ Complete development environment with test services:
 **Usage:**
 ```bash
 # Start development environment
-cd docker
+cd build/package/docker
 docker-compose -f docker-compose.dev.yml up -d
 
 # View logs

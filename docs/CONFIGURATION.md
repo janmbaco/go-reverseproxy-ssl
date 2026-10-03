@@ -656,7 +656,7 @@ networks:
 
 The Docker image uses a multi-stage security approach:
 
-1. **Build stage**: Uses `golang:1.25-alpine` to compile the binary
+1. **Build stage**: Uses `golang:1.27.1-alpine` to compile the binary
 2. **Runtime stage**: Uses `alpine:latest` with minimal packages
 3. **User creation**: Creates `reverseproxy` user (UID 1000, GID 1000)
 4. **Entrypoint execution**: 

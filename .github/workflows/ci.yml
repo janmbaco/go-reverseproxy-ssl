@@ -17,13 +17,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.27.1'
           cache: true
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: v2.14.0
           args: --timeout=5m
 
   test:
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ['1.25']
+        go-version: ['1.26.8', '1.27.1']
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -52,7 +52,7 @@ jobs:
         run: go test -v -race -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v tests/integration | grep -v test)
 
       - name: Upload coverage to Codecov
-        if: matrix.go-version == '1.25'
+        if: matrix.go-version == '1.27.1'
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.out
@@ -70,7 +70,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.27.1'
           cache: true
 
       - name: Build binary
@@ -78,5 +78,9 @@ jobs:
 
       - name: Check for vulnerabilities
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
+          govulncheck ./...
+          cd build/package/docker/grpc-server
+          go test -race ./...
+          go vet ./...
           govulncheck ./...

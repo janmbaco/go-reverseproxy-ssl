@@ -1,8 +1,8 @@
 services:
   reverseproxy-debug:
     build:
-      context: ../../../..
-      dockerfile: go-reverseproxy-ssl/build/package/docker/Dockerfile.dev
+      context: ../../..
+      dockerfile: build/package/docker/Dockerfile.dev
     container_name: go-reverseproxy-ssl-debug
     restart: unless-stopped
     ports:

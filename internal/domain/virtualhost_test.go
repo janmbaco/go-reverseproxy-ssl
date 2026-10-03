@@ -413,11 +413,7 @@ func TestVirtualHostBase_redirectRequest_WhenCalled_ThenTransformsRequestCorrect
 		Host:   "frontend.com",
 	}
 
-	outReq := &http.Request{
-		Method: "GET",
-		URL:    &url.URL{},
-		Header: http.Header{},
-	}
+	outReq := inReq.Clone(inReq.Context())
 
 	// Act
 	vh.redirectRequest(outReq, inReq, true)
@@ -453,11 +449,7 @@ func TestVirtualHostBase_redirectRequest_WhenNoXForwardedHeader_ThenDoesNotSetHe
 		Host:   "frontend.com",
 	}
 
-	outReq := &http.Request{
-		Method: "POST",
-		URL:    &url.URL{},
-		Header: http.Header{},
-	}
+	outReq := inReq.Clone(inReq.Context())
 
 	// Act
 	vh.redirectRequest(outReq, inReq, false)

@@ -1,11 +1,18 @@
 # Go ReverseProxy SSL
 
 [![Go Report Card](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat)](https://goreportcard.com/report/github.com/janmbaco/go-reverseproxy-ssl/v3)
-[![Go Version](https://img.shields.io/badge/go-1.25+-blue.svg)](https://golang.org/dl/)
+[![Go Version](https://img.shields.io/badge/go-1.26+-blue.svg)](https://golang.org/dl/)
 [![License](https://img.shields.io/badge/license-GPL%20v3.0-green.svg)](LICENSE)
-[![Release](https://img.shields.io/badge/release-v3.0.0-blue.svg)](https://github.com/janmbaco/go-reverseproxy-ssl/releases/tag/v3.0.0)
+[![Release](https://img.shields.io/badge/release-v3.0.1-blue.svg)](https://github.com/janmbaco/go-reverseproxy-ssl/releases/tag/v3.0.1)
 
 **Add automatic HTTPS to any web app, API, or gRPC service in 2 minutes.** No Nginx config, no manual certificates — just point your domain and run.
+
+### Security update: v3.0.1
+
+- gRPC 1.83.2 fixes the HTTP/2 fragmentation OOM (CVE-2026-84304) and subsequent header-handling advisories, including the standalone gRPC example module.
+- Published infrastructure v2.2.0 and patched networking/cryptography dependencies require Go 1.26+. CI covers Go 1.26.8 and 1.27.1.
+- HTTP forwarding uses `ReverseProxy.Rewrite`: untrusted forwarding headers and malformed query parameters are not restored after sanitization. Forwarded client identity is derived from the immediate connection; client-supplied forwarding chains are not trusted.
+- Development containers build from this repository alone. They no longer copy a sibling infrastructure checkout; dependency failures stop the build.
 
 ## What It Does
 
@@ -45,7 +52,7 @@ Your App (localhost:3000) + This Proxy = https://yourdomain.com (automatic cert)
 1. **Your own server** (VPS or cloud VM with root access)
 2. **Domain name** pointed to your server's IP (e.g., `example.com` → `203.0.113.10`)
 3. **Ports 80 and 443** open in your firewall
-4. **Docker** (recommended) or Go 1.25+
+4. **Docker** (recommended) or Go 1.26+ (use a supported, patched toolchain)
 
 ### Example 1: Single Web Application
 
@@ -733,7 +740,7 @@ See `docker-compose.quickstart.yml` for complete example.
 
 ### Build from Source
 
-**Requirements**: Go 1.25+
+**Requirements**: Go 1.26+ (CI: 1.26.8 and 1.27.1)
 
 ```bash
 git clone https://github.com/janmbaco/go-reverseproxy-ssl.git

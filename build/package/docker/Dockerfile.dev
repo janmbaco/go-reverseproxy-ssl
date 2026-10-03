@@ -2,7 +2,7 @@
 # Dockerfile para DESARROLLO LOCAL
 # Genera certificado autofirmado para localhost
 # ============================================
-FROM golang:1.25-alpine AS builder
+FROM golang:1.27.1-alpine AS builder
 
 WORKDIR /build
 
@@ -10,23 +10,16 @@ WORKDIR /build
 RUN apk add --no-cache git ca-certificates openssl
 
 # Copiar archivos go.mod y go.sum primero para aprovechar cache de Docker
-COPY go-reverseproxy-ssl/go.mod go-reverseproxy-ssl/go.sum ./go-reverseproxy-ssl/
-
-# Copiar go-infrastructure para desarrollo local
-COPY go-infrastructure ./go-infrastructure/
-
-# Modificar go.mod para usar versión local de go-infrastructure
-RUN sed -i 's|replace github.com/janmbaco/go-infrastructure/ => ../go-infrastructure|replace github.com/janmbaco/go-infrastructure/ => ../go-infrastructure|' go-reverseproxy-ssl/go.mod
+COPY go.mod go.sum ./go-reverseproxy-ssl/
 
 # Copiar el resto del código fuente del proyecto
-COPY go-reverseproxy-ssl ./go-reverseproxy-ssl/
+COPY . ./go-reverseproxy-ssl/
 
 # Cambiar al directorio del proyecto donde está main.go
 WORKDIR /build/go-reverseproxy-ssl/cmd/reverseproxy
 
 # Descargar y verificar dependencias
 RUN go mod download && \
-    go mod tidy && \
     go mod verify
 
 # Instalar Delve para debugging

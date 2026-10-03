@@ -100,9 +100,12 @@ func (virtualHost *VirtualHostBase) GetHostName() string {
 	return b.String()
 }
 
-func (virtualHost *VirtualHostBase) serve(rw http.ResponseWriter, req *http.Request, directorFunc func(outReq *http.Request), transport http.RoundTripper) {
+func (virtualHost *VirtualHostBase) serve(rw http.ResponseWriter, req *http.Request, rewrite func(outReq *http.Request), transport http.RoundTripper) {
 	(&httputil.ReverseProxy{
-		Director:  directorFunc,
+		Rewrite: func(request *httputil.ProxyRequest) {
+			request.SetXForwarded()
+			rewrite(request.Out)
+		},
 		ErrorLog:  virtualHost.logger.GetErrorLogger(),
 		Transport: transport,
 	}).ServeHTTP(rw, req)
@@ -146,8 +149,8 @@ func (virtualHost *VirtualHostBase) redirectRequest(outReq *http.Request, req *h
 	outReq.URL.Scheme = virtualHost.Scheme
 	outReq.URL.Host = virtualHost.GetHostName()
 	outReq.URL.Path = virtualHost.getPath(req.URL.Path)
-	outReq.URL.RawQuery = req.URL.RawQuery
-	outReq.Header = req.Header
+	// Preserve the cloned request's sanitized query and headers. Copying them
+	// back from req would restore untrusted forwarding and hop-by-hop headers.
 	if setXForwaredHeader {
 		outReq.Header.Set("X-Forwarded-Proto", "https")
 	}
