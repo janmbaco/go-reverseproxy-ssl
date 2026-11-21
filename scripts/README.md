@@ -39,22 +39,12 @@ PowerShell script to run integration tests with Docker.
 5. **Run Tests**: Execute integration tests with `INTEGRATION_TEST=true`
 6. **Cleanup**: Stop and remove the test container
 
-## Manual Execution
+## Manual execution
 
-If you prefer to run tests manually:
+Run the integration stack from the repository root. It creates fresh configuration and certificate volumes from the checked-in sample.
 
 ```bash
-# Build
-docker build -f build/package/Dockerfile -t go-reverseproxy-ssl:test .
-
-# Start service
-docker run -d --name reverse-proxy \
-    -p 443:443 \
-    -v ./integration/testdata:/app/test-html \
-    -v ./certs:/app/certs \
-    go-reverseproxy-ssl:test \
-    --config /app/integration/testdata/config.json
-
-# Wait for service to be ready, then run tests
-INTEGRATION_TEST=true go test -v ./integration/...
+docker compose -p reverseproxy-manual -f integration/docker-compose.test.yml up --build -d
+INTEGRATION_TEST=true go test -count=1 -v ./integration/...
+docker compose -p reverseproxy-manual -f integration/docker-compose.test.yml down --volumes
 ```
