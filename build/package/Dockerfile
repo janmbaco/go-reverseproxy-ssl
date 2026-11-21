@@ -25,7 +25,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # ============================================
 # Runtime Stage
 # ============================================
-FROM alpine:3.24
+FROM alpine:3.23
 
 LABEL maintainer="janmbaco"
 LABEL description="Go ReverseProxy SSL with Let's Encrypt support"
