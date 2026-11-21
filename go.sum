@@ -174,8 +174,8 @@ github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANyt
 github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d/go.mod h1:qj24IKcXYK6Iy9ceXlo3Tc+vtHo9lIhSX5JddghvEPo=
 github.com/janmbaco/copier v1.0.0 h1:7HRGN/1J97I7V5dBmZlFpoT+XkPqYEXrHsKFjHHZM1U=
 github.com/janmbaco/copier v1.0.0/go.mod h1:PmbuQgYf3AI6UDwdSPMV4yMLkWvLbs0MG+CBSvlFw0s=
-github.com/janmbaco/go-infrastructure/v2 v2.3.0 h1:VvoiDuNKuNkLs7in5Wv1ekyyOUgzHf4STbGL2C3bkTg=
-github.com/janmbaco/go-infrastructure/v2 v2.3.0/go.mod h1:l6bHKpyX+sg372xoD/BlRs4z0k6UFDEkEsMmKXrHNNw=
+github.com/janmbaco/go-infrastructure/v2 v2.3.1 h1:dMgACS4Uy05GXpfkyqUYB/AyCjkOVaoTxGyeIhjJ++Y=
+github.com/janmbaco/go-infrastructure/v2 v2.3.1/go.mod h1:l6bHKpyX+sg372xoD/BlRs4z0k6UFDEkEsMmKXrHNNw=
 github.com/jinzhu/copier v0.4.0 h1:w3ciUoD19shMCRargcpm0cm91ytaBhDvuRpz1ODO/U8=
 github.com/jinzhu/copier v0.4.0/go.mod h1:DfbEm0FYsaqBcKcFuvmOZb218JkPGtvSHsKg8S8hyyg=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=

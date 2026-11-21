@@ -98,6 +98,13 @@ func TestVirtualHostBase_SetURLToReplace_WhenFromNoPath_ThenSetsCorrectValues(t 
 	assert.Equal(t, "", vh.pathToDelete)
 }
 
+func TestVirtualHostBase_MissingServerCertificateIsAnAbsentProvider(t *testing.T) {
+	host := &VirtualHostBase{From: "host.example"}
+	if provider := host.GetServerCertificate(); provider != nil {
+		t.Fatalf("missing certificate returned a non-nil provider of type %T", provider)
+	}
+}
+
 func TestVirtualHostBase_GetHostToReplace_WhenCalled_ThenReturnsHostToReplace(t *testing.T) {
 	// Arrange
 	vh := &VirtualHostBase{

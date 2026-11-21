@@ -9,7 +9,7 @@
 
 ### Go toolchain update: v3.1.0
 
-- The proxy uses infrastructure v2.3.0. Both modules build with Go 1.26 or later. CI tests Go 1.26.11 and 1.27.4. All Go container builders use Go 1.27.4, including quickstart. The updated module graph includes x/net v0.63.0 and klauspost/compress v1.20.5.
+- The proxy uses infrastructure v2.3.1 to reload its listener after configuration changes. Both modules build with Go 1.26 or later. CI tests Go 1.26.11 and 1.27.4. All Go container builders use Go 1.27.4, including quickstart. The updated module graph includes x/net v0.63.0 and klauspost/compress v1.20.5.
 
 ### Security update: v3.0.1
 
