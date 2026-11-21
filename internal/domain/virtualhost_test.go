@@ -79,7 +79,7 @@ func TestVirtualHostBase_SetURLToReplace_WhenFromHasPath_ThenSetsCorrectValues(t
 
 	// Assert
 	assert.Equal(t, "example.com/path/", vh.urlToReplace)
-	assert.Equal(t, "example.com", vh.hostToReplace)
+	assert.Equal(t, "example.com", vh.GetHostToReplace())
 	assert.Equal(t, "/path/", vh.pathToDelete)
 }
 
@@ -94,14 +94,14 @@ func TestVirtualHostBase_SetURLToReplace_WhenFromNoPath_ThenSetsCorrectValues(t 
 
 	// Assert
 	assert.Equal(t, "example.com/", vh.urlToReplace)
-	assert.Equal(t, "example.com", vh.hostToReplace)
+	assert.Equal(t, "example.com", vh.GetHostToReplace())
 	assert.Equal(t, "", vh.pathToDelete)
 }
 
 func TestVirtualHostBase_GetHostToReplace_WhenCalled_ThenReturnsHostToReplace(t *testing.T) {
 	// Arrange
 	vh := &VirtualHostBase{
-		hostToReplace: "example.com",
+		From: "example.com/path",
 	}
 
 	// Act
@@ -274,7 +274,7 @@ func TestVirtualHostBase_SetURLToReplace_WhenFromWithMultiplePaths_ThenSetsCorre
 
 	// Assert
 	assert.Equal(t, "api.example.com/v1/users/", vh.urlToReplace)
-	assert.Equal(t, "api.example.com", vh.hostToReplace)
+	assert.Equal(t, "api.example.com", vh.GetHostToReplace())
 	assert.Equal(t, "/v1/users/", vh.pathToDelete)
 }
 
@@ -289,7 +289,7 @@ func TestVirtualHostBase_SetURLToReplace_WhenFromEndsWithSlash_ThenHandlesCorrec
 
 	// Assert
 	assert.Equal(t, "example.com/api/", vh.urlToReplace)
-	assert.Equal(t, "example.com", vh.hostToReplace)
+	assert.Equal(t, "example.com", vh.GetHostToReplace())
 	assert.Equal(t, "/api/", vh.pathToDelete)
 }
 
@@ -304,7 +304,7 @@ func TestVirtualHostBase_SetURLToReplace_WhenFromNoTrailingSlash_ThenAddsSlashTo
 
 	// Assert
 	assert.Equal(t, "example.com/api/", vh.urlToReplace)
-	assert.Equal(t, "example.com", vh.hostToReplace)
+	assert.Equal(t, "example.com", vh.GetHostToReplace())
 	assert.Equal(t, "/api/", vh.pathToDelete)
 }
 
@@ -477,7 +477,7 @@ func TestVirtualHostBase_EndToEndRouting_ComplexScenario_ThenRoutesCorrectly(t *
 	vh.SetURLToReplace()
 
 	// Verify parsing
-	assert.Equal(t, "api.example.com", vh.hostToReplace)
+	assert.Equal(t, "api.example.com", vh.GetHostToReplace())
 	assert.Equal(t, "/v2/service/", vh.pathToDelete)
 
 	// Act: Simulate incoming request to "api.example.com/v2/service/users/list"

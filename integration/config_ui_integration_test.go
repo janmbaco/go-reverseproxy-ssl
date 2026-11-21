@@ -3,349 +3,227 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
-	"fmt"
 	"io"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
 
-func TestConfigUI_HTMLPages(t *testing.T) {
-	// Skip test if INTEGRATION_TEST environment variable is not set
+const configUI = "http://localhost:8081"
+
+func integrationClient(t *testing.T) *http.Client {
+	t.Helper()
 	if os.Getenv("INTEGRATION_TEST") != "true" {
-		t.Skip("Skipping integration test. Set INTEGRATION_TEST=true to run.")
+		t.Skip("Set INTEGRATION_TEST=true with the integration stack running.")
 	}
+	return &http.Client{Timeout: 10 * time.Second}
+}
 
-	fmt.Println("Testing Config UI HTML pages...")
-
-	// Create HTTP client that skips TLS verification for local testing
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-
-	// Test main config page
-	resp, err := client.Get("http://localhost:8081/")
-	if err != nil {
-		t.Fatalf("Request to config UI failed: %v", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("Failed to read response: %v", err)
-	}
-
-	fmt.Printf("Config UI - Status: %s\n", resp.Status)
-	fmt.Printf("Response length: %d bytes\n", len(body))
-
-	if resp.StatusCode != 200 {
-		t.Errorf("Expected status 200 for config UI, got %d", resp.StatusCode)
-	}
-
-	// Check for expected HTML content
-	expectedElements := []string{
-		"<title>",
-		"Reverse Proxy Config",
-		"Virtual Hosts",
-		"SSL Certificates",
-	}
-
-	for _, element := range expectedElements {
-		if !bytes.Contains(body, []byte(element)) {
-			t.Errorf("Expected HTML to contain '%s', but it doesn't", element)
+func TestConfigUI_HTMLPages(t *testing.T) {
+	client := integrationClient(t)
+	for _, page := range []struct{ path, title string }{
+		{"/", "Dashboard - Reverse Proxy Config"},
+		{"/virtualhosts", "Virtual Hosts - Reverse Proxy Config"},
+		{"/config", "Configuration - Reverse Proxy Config"},
+	} {
+		res, err := client.Get(configUI + page.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(res.Body)
+		_ = res.Body.Close()
+		if err != nil || res.StatusCode != http.StatusOK || !bytes.Contains(body, []byte(page.title)) {
+			t.Fatalf("GET %s: status=%d, expected page title %q, read error=%v", page.path, res.StatusCode, page.title, err)
 		}
 	}
+}
 
-	fmt.Println("✓ Config UI HTML page loads correctly")
+func TestConfigUI_ConfigurationAPI(t *testing.T) {
+	client := integrationClient(t)
+	res, err := client.Get(configUI + "/api/config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var config struct {
+		DefaultHost string `json:"default_host"`
+		ConfigPort  string `json:"config_ui_port"`
+	}
+	decodeOK(t, res, &config)
+	if config.DefaultHost != "localhost" || config.ConfigPort != ":8081" {
+		t.Fatalf("unexpected active fixture: host=%q config port=%q", config.DefaultHost, config.ConfigPort)
+	}
 }
 
 func TestConfigUI_VirtualHostsAPI(t *testing.T) {
-	// Skip test if INTEGRATION_TEST environment variable is not set
-	if os.Getenv("INTEGRATION_TEST") != "true" {
-		t.Skip("Skipping integration test. Set INTEGRATION_TEST=true to run.")
+	client := integrationClient(t)
+	const host = "route-test.localhost"
+	id := createHost(t, client, host, nil)
+	if got := hostID(t, client, host); got != id {
+		t.Fatalf("created host %q: read id=%q, want %q", host, got, id)
 	}
-
-	fmt.Println("Testing Config UI Virtual Hosts API...")
-
-	client := createHTTPClient()
-
-	// Test GET virtual hosts
-	testGetVirtualHosts(t, client)
-
-	// Test POST new virtual host
-	createdID := testCreateVirtualHost(t, client)
-
-	// Test DELETE virtual host
-	if createdID != "" {
-		testDeleteVirtualHost(t, client, createdID)
+	deleteHost(t, client, id, host)
+	if got := hostID(t, client, host); got != "" {
+		t.Fatalf("deleted host %q still listed with id %q", host, got)
 	}
 }
 
-func createHTTPClient() *http.Client {
-	return &http.Client{
-		Timeout: 10 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
+func TestConfigUI_CertificateUpload(t *testing.T) {
+	client := integrationClient(t)
+	const host = "certificate-test.localhost"
+	certPEM, keyPEM := newHostCertificate(t, host)
+	id := createHost(t, client, host, map[string][]byte{
+		"serverCertFile": certPEM,
+		"serverKeyFile":  keyPEM,
+	})
+	t.Cleanup(func() { deleteHost(t, client, id, host) })
+
+	roots := x509.NewCertPool()
+	if !roots.AppendCertsFromPEM(certPEM) {
+		t.Fatal("could not load generated test certificate")
+	}
+	// Wait for the live listener to switch to the configuration just acknowledged by the UI.
+	// Trust only this test's newly generated certificate, and verify the virtual host via SNI.
+	config := &tls.Config{RootCAs: roots, ServerName: host, MinVersion: tls.VersionTLS12}
+	deadline := time.Now().Add(5 * time.Second)
+	dialer := &net.Dialer{Timeout: time.Second}
+	for {
+		conn, err := tls.DialWithDialer(dialer, "tcp", "localhost:443", config)
+		if err == nil {
+			_ = conn.Close()
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("TLS listener did not serve the uploaded certificate for %q: %v", host, err)
+		}
+		time.Sleep(30 * time.Millisecond)
 	}
 }
 
-func testGetVirtualHosts(t *testing.T, client *http.Client) {
-	resp, err := client.Get("http://localhost:8081/api/virtualhosts")
-	if err != nil {
-		t.Fatalf("GET virtual hosts request failed: %v", err)
+func createHost(t *testing.T, client *http.Client, host string, files map[string][]byte) string {
+	t.Helper()
+	var body bytes.Buffer
+	form := multipart.NewWriter(&body)
+	fields := map[string]string{"from": host, "scheme": "http", "hostName": "backend-8080", "port": "80"}
+	if len(files) != 0 {
+		fields["useServerCert"] = "on"
 	}
-	defer func() { _ = resp.Body.Close() }()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("Failed to read response: %v", err)
-	}
-
-	if resp.StatusCode != 200 {
-		t.Errorf("Expected status 200 for GET virtual hosts, got %d", resp.StatusCode)
-	}
-
-	// Parse JSON response
-	var virtualHosts map[string]interface{}
-	if err := json.Unmarshal(body, &virtualHosts); err != nil {
-		t.Fatalf("Failed to parse JSON response: %v", err)
-	}
-
-	fmt.Printf("Virtual hosts response: %s\n", string(body))
-	fmt.Println("✓ GET virtual hosts API works correctly")
-}
-
-func testCreateVirtualHost(t *testing.T, client *http.Client) string {
-	requestBody, contentType := createVirtualHostFormData(t)
-	postReq := createPostRequest(t, requestBody, contentType)
-
-	resp, err := client.Do(postReq)
-	if err != nil {
-		t.Fatalf("POST virtual host request failed: %v", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	return handleVirtualHostCreationResponse(t, resp)
-}
-
-func createVirtualHostFormData(t *testing.T) (*bytes.Buffer, string) {
-	var b bytes.Buffer
-	w := multipart.NewWriter(&b)
-
-	fields := map[string]string{
-		"from":     "test.localhost",
-		"scheme":   "http",
-		"hostName": "backend-8080",
-		"port":     "80",
-	}
-
-	for key, value := range fields {
-		if err := w.WriteField(key, value); err != nil {
-			t.Fatalf("Failed to write %s field: %v", key, err)
+	for name, value := range fields {
+		if err := form.WriteField(name, value); err != nil {
+			t.Fatal(err)
 		}
 	}
-
-	if err := w.Close(); err != nil {
-		t.Fatalf("Failed to close multipart writer: %v", err)
+	for name, data := range files {
+		part, err := form.CreateFormFile(name, name+".pem")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := part.Write(data); err != nil {
+			t.Fatal(err)
+		}
 	}
-
-	return &b, w.FormDataContentType()
-}
-
-func createPostRequest(t *testing.T, body *bytes.Buffer, contentType string) *http.Request {
-	postReq, err := http.NewRequest("POST", "http://localhost:8081/api/virtualhosts", body)
+	if err := form.Close(); err != nil {
+		t.Fatal(err)
+	}
+	res, err := client.Post(configUI+"/api/virtualhosts", form.FormDataContentType(), &body)
 	if err != nil {
-		t.Fatalf("Failed to create POST request: %v", err)
+		t.Fatal(err)
 	}
-	postReq.Header.Set("Content-Type", contentType)
-	return postReq
+	var reply struct {
+		Success bool
+		ID      string
+	}
+	decodeOK(t, res, &reply)
+	if !reply.Success || reply.ID == "" {
+		t.Fatalf("creation response did not confirm a new virtual host: %+v", reply)
+	}
+	return reply.ID
 }
 
-func handleVirtualHostCreationResponse(t *testing.T, resp *http.Response) string {
-	if resp.StatusCode != 200 && resp.StatusCode != 201 {
-		body, _ := io.ReadAll(resp.Body)
-		t.Errorf("Expected status 200/201 for POST virtual host, got %d. Response: %s", resp.StatusCode, string(body))
-		return ""
+func hostID(t *testing.T, client *http.Client, from string) string {
+	t.Helper()
+	res, err := client.Get(configUI + "/api/virtualhosts")
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	fmt.Println("✓ POST virtual host API works correctly")
-	return extractVirtualHostID(t, resp.Body)
-}
-
-func extractVirtualHostID(t *testing.T, body io.Reader) string {
-	var response map[string]interface{}
-	if err := json.NewDecoder(body).Decode(&response); err == nil {
-		if id, ok := response["id"].(string); ok && id != "" {
-			fmt.Printf("Created virtual host with ID: %s\n", id)
-			return id
+	var reply struct {
+		Success      bool
+		VirtualHosts []struct{ From, ID string }
+	}
+	decodeOK(t, res, &reply)
+	if !reply.Success || len(reply.VirtualHosts) == 0 {
+		t.Fatal("list response did not contain the integration virtual hosts")
+	}
+	for _, host := range reply.VirtualHosts {
+		if host.From == from {
+			return host.ID
 		}
 	}
 	return ""
 }
 
-func testDeleteVirtualHost(t *testing.T, client *http.Client, virtualHostID string) {
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("http://localhost:8081/api/virtualhosts/%s", virtualHostID), nil)
+func deleteHost(t *testing.T, client *http.Client, id, host string) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodDelete, configUI+"/api/virtualhosts/"+id, nil)
 	if err != nil {
-		t.Fatalf("Failed to create DELETE request: %v", err)
+		t.Fatal(err)
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reply struct{ Success bool }
+	decodeOK(t, res, &reply)
+	if !reply.Success {
+		t.Fatalf("delete response did not confirm id %s", id)
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("DELETE virtual host request failed: %v", err)
+	// The configuration API and TLS listener run independently. Observe retirement
+	// using the fixture's localhost TLS endpoint and the removed HTTP host header.
+	transport := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, DisableKeepAlives: true}
+	defer transport.CloseIdleConnections()
+	proxy := &http.Client{
+		Transport: transport, Timeout: time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse },
 	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != 200 && resp.StatusCode != 204 {
-		body, _ := io.ReadAll(resp.Body)
-		t.Errorf("Expected status 200/204 for DELETE virtual host, got %d. Response: %s", resp.StatusCode, string(body))
-	} else {
-		fmt.Println("✓ DELETE virtual host API works correctly")
+	probe, err := http.NewRequest(http.MethodGet, "https://localhost/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probe.Host = host
+	deadline := time.Now().Add(5 * time.Second)
+	var status int
+	for {
+		res, err := proxy.Do(probe)
+		if err == nil {
+			status = res.StatusCode
+			_ = res.Body.Close()
+			if status == http.StatusNotFound {
+				return
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("route %q did not retire: status=%d err=%v", host, status, err)
+		}
+		time.Sleep(30 * time.Millisecond)
 	}
 }
 
-func TestConfigUI_CertificatesAPI(t *testing.T) {
-	// Skip test if INTEGRATION_TEST environment variable is not set
-	if os.Getenv("INTEGRATION_TEST") != "true" {
-		t.Skip("Skipping integration test. Set INTEGRATION_TEST=true to run.")
+func decodeOK(t *testing.T, res *http.Response, dst any) {
+	t.Helper()
+	defer func() { _ = res.Body.Close() }()
+	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
+		t.Fatalf("%s %s: %s", res.Request.Method, res.Request.URL.Path, res.Status)
 	}
-
-	fmt.Println("Testing Config UI Certificates API...")
-
-	client := &http.Client{
-		Timeout: 15 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
+	if ct := res.Header.Get("Content-Type"); strings.SplitN(ct, ";", 2)[0] != "application/json" {
+		t.Fatalf("%s: expected JSON, got %q", res.Request.URL.Path, ct)
 	}
-
-	// Create a simple test certificate file content
-	certContent := `-----BEGIN CERTIFICATE-----
-MIICiTCCAg+gAwIBAgIJAJ8l2Z2Z3Z3ZMAOGA1UEBhMCVVMxCzAJBgNVBAgTAkNB
-MRYwFAYDVQQHEw1TYW4gRnJhbmNpc2NvMRowGAYDVQQKExFPcGVuU1NMIENlcnRp
-ZmljYXRlIEF1dGhvcml0eTELMAkGA1UECxMCSVQxFjAUBgNVBAMTDU9wZW5TU0wg
-Q0EgQ2VydDAeFw0xNTA0MTUxNzI5NTlaFw0yNTA0MTIxNzI5NTlaMB4xHDAaBgNV
-BAMTE3d3dy5leGFtcGxlLmNvbXBhbnkwWjANBgkqhkiG9w0BAQEFAANOCQDNAQAB
-...
------END CERTIFICATE-----`
-
-	keyContent := `-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKB
-...
------END PRIVATE KEY-----`
-
-	// Test certificate upload
-	var b bytes.Buffer
-	w := multipart.NewWriter(&b)
-
-	// Add certificate file
-	certWriter, err := w.CreateFormFile("certificate", "test-cert.pem")
-	if err != nil {
-		t.Fatalf("Failed to create form file for certificate: %v", err)
-	}
-	_, err = certWriter.Write([]byte(certContent))
-	if err != nil {
-		t.Fatalf("Failed to write certificate content: %v", err)
-	}
-
-	// Add key file
-	keyWriter, err := w.CreateFormFile("key", "test-key.pem")
-	if err != nil {
-		t.Fatalf("Failed to create form file for key: %v", err)
-	}
-	_, err = keyWriter.Write([]byte(keyContent))
-	if err != nil {
-		t.Fatalf("Failed to write key content: %v", err)
-	}
-
-	// Add domain name
-	err = w.WriteField("domain", "test.example.com")
-	if err != nil {
-		t.Fatalf("Failed to write domain field: %v", err)
-	}
-
-	err = w.Close()
-	if err != nil {
-		t.Fatalf("Failed to close multipart writer: %v", err)
-	}
-
-	req, err := http.NewRequest("POST", "http://localhost:8081/api/certificates", &b)
-	if err != nil {
-		t.Fatalf("Failed to create certificate upload request: %v", err)
-	}
-	req.Header.Set("Content-Type", w.FormDataContentType())
-
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("Certificate upload request failed: %v", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("Failed to read certificate upload response: %v", err)
-	}
-
-	fmt.Printf("Certificate upload - Status: %d\n", resp.StatusCode)
-	fmt.Printf("Response: %s\n", string(body))
-
-	// Certificate upload might fail due to invalid test certificates, but the endpoint should respond
-	if resp.StatusCode >= 500 {
-		t.Errorf("Certificate upload endpoint returned server error: %d", resp.StatusCode)
-	} else {
-		fmt.Println("✓ Certificate upload API endpoint responds correctly")
-	}
-}
-
-func TestConfigUI_ServerStatus(t *testing.T) {
-	// Skip test if INTEGRATION_TEST environment variable is not set
-	if os.Getenv("INTEGRATION_TEST") != "true" {
-		t.Skip("Skipping integration test. Set INTEGRATION_TEST=true to run.")
-	}
-
-	fmt.Println("Testing Config UI server status...")
-
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-
-	// Test health check endpoint
-	resp, err := client.Get("http://localhost:8081/health")
-	if err != nil {
-		t.Logf("Health check endpoint not available (expected): %v", err)
-	} else {
-		defer func() { _ = resp.Body.Close() }()
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("Health check - Status: %d, Response: %s\n", resp.StatusCode, string(body))
-	}
-
-	// Test that the server is responding to basic requests
-	resp, err = client.Get("http://localhost:8081/")
-	if err != nil {
-		t.Fatalf("Config UI server is not responding: %v", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != 200 {
-		t.Errorf("Config UI server returned status %d, expected 200", resp.StatusCode)
-	} else {
-		fmt.Println("✓ Config UI server is running and responding correctly")
+	if err := json.NewDecoder(res.Body).Decode(dst); err != nil {
+		t.Fatal(err)
 	}
 }

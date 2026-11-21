@@ -5,6 +5,7 @@ import (
 
 	"github.com/janmbaco/go-infrastructure/v2/dependencyinjection"
 	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/domain"
+	certs "github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/certificates"
 	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/infrastructure/grpcutil"
 	"github.com/janmbaco/go-reverseproxy-ssl/v3/internal/mocks"
 	"github.com/stretchr/testify/assert"
@@ -301,4 +302,36 @@ func TestVirtualHostResolver_Resolve_WhenMultipleResolves_ThenEachResolveIsIndep
 	assert.Len(t, hosts2, 1)
 	assert.Equal(t, "config1.com", hosts1[0].GetFrom())
 	assert.Equal(t, "config2.com", hosts2[0].GetFrom())
+}
+
+func TestResolveCertificatesByIncomingHostname(t *testing.T) {
+	for _, tt := range []struct {
+		name              string
+		secondHost        string
+		secondCertificate *certs.CertificateDefs
+		wantConflict      bool
+	}{
+		{"independent hosts", "two.example/other", &certs.CertificateDefs{PublicKey: "two.pem"}, false},
+		{"one identity on two routes", "one.example/other", &certs.CertificateDefs{PublicKey: "one.pem"}, false},
+		{"conflicting identities on one host", "one.example/other", &certs.CertificateDefs{PublicKey: "different.pem"}, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			resolver := NewVirtualHostResolver(dependencyinjection.NewContainer(), &mocks.MockLogger{})
+			host := func(from string, cert *certs.CertificateDefs) *domain.WebVirtualHost {
+				return &domain.WebVirtualHost{ClientCertificateHost: domain.ClientCertificateHost{VirtualHostBase: domain.VirtualHostBase{
+					From: from, Scheme: "http", HostName: "backend", Port: 80, ServerCertificate: cert,
+				}}}
+			}
+			_, err := resolver.Resolve(&domain.Config{WebVirtualHosts: []*domain.WebVirtualHost{
+				host("default.example", nil),
+				host("one.example/first", &certs.CertificateDefs{PublicKey: "one.pem"}),
+				host(tt.secondHost, tt.secondCertificate),
+			}})
+			if tt.wantConflict {
+				require.ErrorContains(t, err, "one.example")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

@@ -22,7 +22,6 @@ type VirtualHostBase struct {
 	ServerCertificate *certs.CertificateDefs `json:"server_certificate"`
 	urlToReplace      string
 	pathToDelete      string
-	hostToReplace     string
 	logger            Logger
 }
 
@@ -50,7 +49,6 @@ func (virtualHost *VirtualHostBase) SetURLToReplace() {
 		virtualHost.urlToReplace += "/"
 	}
 	paths := strings.SplitAfterN(virtualHost.From, "/", 2)
-	virtualHost.hostToReplace = strings.ReplaceAll(paths[0], "/", "")
 	if len(paths) == 2 && len(paths[1]) > 0 {
 		var b strings.Builder
 		b.WriteString("/")
@@ -64,7 +62,8 @@ func (virtualHost *VirtualHostBase) SetURLToReplace() {
 
 // GetHostToReplace gets the host to replace by de virtual host.
 func (virtualHost *VirtualHostBase) GetHostToReplace() string {
-	return virtualHost.hostToReplace
+	host, _, _ := strings.Cut(virtualHost.From, "/")
+	return host
 }
 
 // GetURLToReplace gets the url to replace by de virtual host.
@@ -79,6 +78,9 @@ func (virtualHost *VirtualHostBase) GetURL() string {
 
 // GetServerCertificate gets de certificate of the server.
 func (virtualHost *VirtualHostBase) GetServerCertificate() CertificateProvider {
+	if virtualHost.ServerCertificate == nil {
+		return nil
+	}
 	return virtualHost.ServerCertificate
 }
 
