@@ -80,7 +80,7 @@ jobs:
       - name: Check the published runtime packages with Docker Scout
         uses: docker/scout-action@b265cd48f8a1451d2680815b3e8dc4ed65ee16e7 # v1.30.0
         with:
-          command: cves
+          command: quickview,cves
           image: registry://janmbaco/go-reverseproxy-ssl@${{ steps.build.outputs.digest }}
           platform: linux/amd64
           only-package-types: apk
