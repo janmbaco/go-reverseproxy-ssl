@@ -1,6 +1,7 @@
 name: Docker Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v3.*'
@@ -51,11 +52,42 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             
-      - name: Build and push Docker image
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build the release image by digest
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./build/package/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          pull: true
+          platforms: linux/amd64
+          outputs: type=image,name=janmbaco/go-reverseproxy-ssl,push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Check the published runtime packages with Docker Scout
+        uses: docker/scout-action@b265cd48f8a1451d2680815b3e8dc4ed65ee16e7 # v1.30.0
+        with:
+          command: cves
+          image: registry://janmbaco/go-reverseproxy-ssl@${{ steps.build.outputs.digest }}
+          platform: linux/amd64
+          only-package-types: apk
+          only-fixed: true
+          exit-code: true
+          write-comment: false
+          dockerhub-user: ${{ secrets.DOCKERHUB_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Tag the verified image
+        if: github.event_name == 'push'
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mapfile -t tags <<< "$TAGS"
+          args=()
+          for tag in "${tags[@]}"; do
+            args+=(--tag "$tag")
+          done
+          docker buildx imagetools create "${args[@]}" "janmbaco/go-reverseproxy-ssl@$DIGEST"

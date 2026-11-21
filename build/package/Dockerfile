@@ -25,13 +25,13 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # ============================================
 # Runtime Stage
 # ============================================
-FROM alpine:latest
+FROM alpine:3.24
 
 LABEL maintainer="janmbaco"
 LABEL description="Go ReverseProxy SSL with Let's Encrypt support"
 
 # Instalar certificados CA para Let's Encrypt y su-exec para cambiar usuario
-RUN apk --no-cache add ca-certificates tzdata su-exec
+RUN apk --no-cache upgrade && apk add --no-cache ca-certificates tzdata su-exec
 
 # Crear usuario no-root
 RUN addgroup -g 1000 reverseproxy && \
