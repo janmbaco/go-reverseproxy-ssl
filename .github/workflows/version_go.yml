@@ -77,10 +77,20 @@ jobs:
             test "$(su-exec reverseproxy id -u)" = 1000
           '
 
+      - name: Report all vulnerabilities in the runtime image
+        uses: docker/scout-action@b265cd48f8a1451d2680815b3e8dc4ed65ee16e7 # v1.30.0
+        with:
+          command: cves
+          image: registry://janmbaco/go-reverseproxy-ssl@${{ steps.build.outputs.digest }}
+          platform: linux/amd64
+          write-comment: false
+          dockerhub-user: ${{ secrets.DOCKERHUB_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Check the published runtime packages with Docker Scout
         uses: docker/scout-action@b265cd48f8a1451d2680815b3e8dc4ed65ee16e7 # v1.30.0
         with:
-          command: quickview,cves
+          command: cves
           image: registry://janmbaco/go-reverseproxy-ssl@${{ steps.build.outputs.digest }}
           platform: linux/amd64
           only-package-types: apk
