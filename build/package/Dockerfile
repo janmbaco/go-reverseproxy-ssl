@@ -25,11 +25,11 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # ============================================
 # Runtime Stage
 # ============================================
-FROM alpine:3.23 AS runtime-packages
+FROM cgr.dev/chainguard/wolfi-base@sha256:be019c1c74fe69204a42c4e10bc4d886a49bf5403ffa74374ef7baa408fc9a26 AS runtime-packages
 # Install signed runtime packages into a fresh root, retaining the APK inventory.
 RUN mkdir -p /runtime/etc/apk \
     && cp -R /etc/apk/keys /etc/apk/repositories /runtime/etc/apk/ \
-    && apk --root /runtime --initdb --no-cache add alpine-baselayout alpine-release busybox ca-certificates-bundle su-exec tzdata \
+    && apk --root /runtime --initdb --no-cache add wolfi-baselayout busybox ca-certificates-bundle su-exec tzdata \
     && test ! -e /runtime/usr/lib/libcrypto.so.3 \
     && test ! -e /runtime/usr/lib/libssl.so.3
 
