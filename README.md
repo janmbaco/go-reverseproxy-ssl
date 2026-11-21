@@ -3,14 +3,18 @@
 [![Go Report Card](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat)](https://goreportcard.com/report/github.com/janmbaco/go-reverseproxy-ssl/v3)
 [![Go Version](https://img.shields.io/badge/go-1.26+-blue.svg)](https://golang.org/dl/)
 [![License](https://img.shields.io/badge/license-GPL%20v3.0-green.svg)](LICENSE)
-[![Release](https://img.shields.io/badge/release-v3.0.1-blue.svg)](https://github.com/janmbaco/go-reverseproxy-ssl/releases/tag/v3.0.1)
+[![Release](https://img.shields.io/badge/release-v3.1.0-blue.svg)](https://github.com/janmbaco/go-reverseproxy-ssl/releases/tag/v3.1.0)
 
 **Add automatic HTTPS to any web app, API, or gRPC service in 2 minutes.** No Nginx config, no manual certificates — just point your domain and run.
+
+### Go toolchain update: v3.1.0
+
+- The proxy uses infrastructure v2.3.1 to reload its listener after configuration changes. Both modules build with Go 1.26 or later. CI tests Go 1.26.11 and 1.27.4. All Go container builders use Go 1.27.4, including quickstart. The updated module graph includes x/net v0.63.0 and klauspost/compress v1.20.5.
 
 ### Security update: v3.0.1
 
 - gRPC 1.83.2 fixes the HTTP/2 fragmentation OOM (CVE-2026-84304) and subsequent header-handling advisories, including the standalone gRPC example module.
-- Published infrastructure v2.2.0 and patched networking/cryptography dependencies require Go 1.26+. CI covers Go 1.26.8 and 1.27.1.
+- Published infrastructure v2.2.0 and patched networking/cryptography dependencies require Go 1.26+.
 - HTTP forwarding uses `ReverseProxy.Rewrite`: untrusted forwarding headers and malformed query parameters are not restored after sanitization. Forwarded client identity is derived from the immediate connection; client-supplied forwarding chains are not trusted.
 - Development containers build from this repository alone. They no longer copy a sibling infrastructure checkout; dependency failures stop the build.
 
@@ -740,7 +744,7 @@ See `docker-compose.quickstart.yml` for complete example.
 
 ### Build from Source
 
-**Requirements**: Go 1.26+ (CI: 1.26.8 and 1.27.1)
+**Requirements**: Go 1.26+ (CI: 1.26.11 and 1.27.4)
 
 ```bash
 git clone https://github.com/janmbaco/go-reverseproxy-ssl.git
@@ -931,5 +935,5 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md).
 ---
 
 **Version**: v3.0.0  
-**Go Version**: 1.25+  
+**Go Version**: 1.26+
 **License**: GPL v3.0

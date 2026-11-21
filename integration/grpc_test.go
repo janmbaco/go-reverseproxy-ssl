@@ -10,8 +10,6 @@ import (
 	"os"
 	"testing"
 	"time"
-
-	"golang.org/x/net/http2"
 )
 
 type HelloRequest struct {
@@ -115,22 +113,26 @@ func TestGrpcWebBidirectionalThroughProxy(t *testing.T) {
 	httpReq.Header.Set("Content-Type", "application/grpc-web")
 	httpReq.Header.Set("X-Grpc-Web", "1")
 
-	// Use TLS with skip verify
+	protocols := new(http.Protocols)
+	protocols.SetHTTP2(true)
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 		Transport: &http.Transport{
+			Protocols: protocols,
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
 		},
 	}
-	_ = http2.ConfigureTransport(client.Transport.(*http.Transport))
 
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		t.Fatalf("Request failed: %v", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
+	if resp.ProtoMajor != 2 {
+		t.Fatalf("bidirectional test negotiated %s, want HTTP/2", resp.Proto)
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

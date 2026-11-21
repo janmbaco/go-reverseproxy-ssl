@@ -3,26 +3,26 @@
     {
       "from": "localhost",
       "scheme": "http",
-      "host_name": "localhost",
-      "port": 8080
+      "host_name": "backend-8080",
+      "port": 80
     },
     {
       "from": "localhost/prueba-1",
       "scheme": "http",
-      "host_name": "localhost",
-      "port": 8081
+      "host_name": "backend-8081",
+      "port": 80
     },
     {
       "from": "localhost/prueba-2",
       "scheme": "http",
-      "host_name": "localhost",
-      "port": 8082
+      "host_name": "backend-8082",
+      "port": 80
     },
     {
       "from": "localhost/prueba-3",
       "scheme": "http",
-      "host_name": "localhost",
-      "port": 8083
+      "host_name": "backend-8083",
+      "port": 80
     }
   ],
   "grpc_virtual_hosts": [],
@@ -31,7 +31,7 @@
     {
       "from": "localhost/grpc",
       "scheme": "http",
-      "host_name": "localhost",
+      "host_name": "grpc-backend",
       "port": 7656,
       "grpc_web_proxy": {
         "grpc_services": {
@@ -43,7 +43,26 @@
           ]
         },
         "is_transparent_server": true,
-        "authority": "localhost:7656",
+        "authority": "grpc-backend:7656",
+        "allow_all_origins": true,
+        "allowed_origins": [],
+        "use_web_sockets": false,
+        "allowed_headers": []
+      }
+    },
+    {
+      "from": "localhost/grpc-selective",
+      "scheme": "http",
+      "host_name": "grpc-backend",
+      "port": 7656,
+      "grpc_web_proxy": {
+        "grpc_services": {
+          "hello.HelloService": [
+            "SayHello"
+          ]
+        },
+        "is_transparent_server": false,
+        "authority": "grpc-backend:7656",
         "allow_all_origins": true,
         "allowed_origins": [],
         "use_web_sockets": false,
@@ -55,9 +74,9 @@
   "default_host": "localhost",
   "reverse_proxy_port": ":443",
   "config_ui_port": ":8081",
-  "default_server_cert": "/app/integration/testdata/localhost-cert.pem",
-  "default_server_key": "/app/integration/testdata/localhost-key.pem",
+  "default_server_cert": "/app/certs/localhost-cert.pem",
+  "default_server_key": "/app/certs/localhost-key.pem",
   "log_console_level": 4,
   "log_file_level": 4,
-  "logs_dir": "./logs"
+  "logs_dir": "/app/logs"
 }
