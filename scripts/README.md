@@ -9,7 +9,7 @@ Bash script to run integration tests with Docker.
 
 **Requirements:**
 - Docker running
-- Go 1.25+ installed
+- Go 1.26+ installed
 - curl command available
 
 **Usage:**
@@ -22,7 +22,7 @@ PowerShell script to run integration tests with Docker.
 
 **Requirements:**
 - Docker running
-- Go 1.25+ installed
+- Go 1.26+ installed
 - PowerShell 5.1+ or PowerShell Core
 
 **Usage:**
