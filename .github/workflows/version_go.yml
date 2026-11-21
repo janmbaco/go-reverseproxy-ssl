@@ -66,6 +66,17 @@ jobs:
           outputs: type=image,name=janmbaco/go-reverseproxy-ssl,push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
 
+      - name: Smoke-test the runtime image
+        env:
+          IMAGE: janmbaco/go-reverseproxy-ssl@${{ steps.build.outputs.digest }}
+        run: |
+          docker run --rm "$IMAGE" --help
+          docker run --rm --entrypoint /bin/sh "$IMAGE" -ec '
+            test -s /etc/ssl/certs/ca-certificates.crt
+            test -s /usr/share/zoneinfo/UTC
+            test "$(su-exec reverseproxy id -u)" = 1000
+          '
+
       - name: Check the published runtime packages with Docker Scout
         uses: docker/scout-action@b265cd48f8a1451d2680815b3e8dc4ed65ee16e7 # v1.30.0
         with:

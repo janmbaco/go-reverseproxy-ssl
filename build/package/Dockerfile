@@ -25,13 +25,19 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # ============================================
 # Runtime Stage
 # ============================================
-FROM alpine:3.23
+FROM alpine:3.23 AS runtime-packages
+# Install signed runtime packages into a fresh root, retaining the APK inventory.
+RUN mkdir -p /runtime/etc/apk \
+    && cp -R /etc/apk/keys /etc/apk/repositories /runtime/etc/apk/ \
+    && apk --root /runtime --initdb --no-cache add alpine-baselayout alpine-release busybox ca-certificates-bundle su-exec tzdata \
+    && test ! -e /runtime/usr/lib/libcrypto.so.3 \
+    && test ! -e /runtime/usr/lib/libssl.so.3
+
+FROM scratch
+COPY --from=runtime-packages /runtime/ /
 
 LABEL maintainer="janmbaco"
 LABEL description="Go ReverseProxy SSL with Let's Encrypt support"
-
-# Instalar certificados CA para Let's Encrypt y su-exec para cambiar usuario
-RUN apk --no-cache upgrade && apk add --no-cache ca-certificates tzdata su-exec
 
 # Crear usuario no-root
 RUN addgroup -g 1000 reverseproxy && \
